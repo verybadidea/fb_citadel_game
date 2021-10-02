@@ -1,0 +1,61 @@
+https://boardgamegeek.com/boardgame/822/carcassonne/images
+https://wikicarpedia.com/index.php/Main_Page
+https://www.ebay.co.uk/itm/114874618783?mkevt=1&mkcid=1&mkrid=710-53481-19255-0&campid=5338722076&toolid=10001
+https://store.steampowered.com/app/1455840/Dorfromantik/
+
+A) Sliding puzzle :-)
+
+B) Solve this (https://norvig.com/carcassonne.html) with coputer, all solutions
+
+C)
+Make cities/villages, roads, riviers.
+Scoring:
+- 1 point = 1 new tile
+- Completed road: 1 point per tile?
+- Completed river: 1 point per tile?
+- Completed town: 1 point per tile?
+- Extra points for full vilage tile?
+- Points for city tiles with shields?
+- Points for monastery/abbey on gras?
+Note: 1 tiles can count 2 times (maybe 3) if town + road piece
+How to stimulate long rivers & roads & large towns? Not needed?
+Infinite map?
+Or game mode with limited space?
+A mode with random tiles already placed?
+
+Niet te bepalen:
+- Doel: zoveel mogelijk punten
+- Voor elke 2 punten 1 stuk op de stapel?
+- Wat doet het klooster/abdij? 1 bonus punt?
+
+Aanpak:
+- Maak lijst van alle stukken (4 rotaties) en bestandsnamen
+- Per stuk bijhouden wat elke zijde is (gras, weg, stad, water) GRCW = grass road city water
+  + bonus punt voor abij, volledig stad, 
+- 1 bonus punt per 10 weg / stad / water steeds? Is niet genoeg punten? Veel te weinig?
+- 3 voor 20, 5 voor 30, 7 voor 40, etc?
+- Steeds keuzen uit meerdere tegels? Meer stapels verdienen door 10+ stad? Max N stapels.
+- Nee meer stapels verdienen door abdij rondom (8 tegels) dicht te leggen
+- Na max stapels, steeds 10+ punten bij abdij rondom (vanaf het begin al +10 punten?)
+- 10+ stad, weg, water = 10 punten extra?
+- Unlock extra stashes (from 1 to 4) by: 20+ tile city, 20+ tile road, 20+ tile water?
+
+User interface:
+- 1 start tile, not by user
+- tile placed is fixed (unmovable)
+- always connect to a tile already placed
+- Rotate tile with mousewheel and <space>
+- move tile with keys or mouse
+- select stapel (stats) with pgup/pgdn or mouseclick
+- when holding tile at new location:
+- * show can/cannot place (x / v icon or via color grey/color or dark/light)
+- * show +road +city +water score (no need to count by user)
+- allow zoom in/out 4x ?
+* Pefect tile bonus? 4 / 8 
+
+'make images:
+'- Open CarcKartenlisteGesamt0708.pdf (with Atril)
+'- Zoom to 200%, screen shot
+'- Gimp: Crop to 200x200, save as bmp
+'- Filename: TRBLC.bmp for Top Right Bottom Left Center
+'- Foxit reader, tile tiles: 230%
