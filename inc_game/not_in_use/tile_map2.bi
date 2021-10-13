@@ -17,15 +17,6 @@ end scope
 
 '--- row_type ------------------------------------------------------------------
 
-type tile_type
-	dim as long id
-	dim as long rot 'rotation: 0...3
-end type
-
-#define NO_TILE type<tile_type>(-1, -1)
-
-'--- row_type ------------------------------------------------------------------
-
 type row_type
 	dim as tile_type tile(any)
 end type

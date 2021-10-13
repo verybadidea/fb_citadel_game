@@ -9,3 +9,6 @@ sub imageKill(p_img as any ptr)
 	p_img = 0
 end sub
 
+#macro setbit(value, bitnum)
+	value or= (1 shl bitnum)
+#endmacro

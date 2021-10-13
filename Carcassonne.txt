@@ -1,13 +1,3 @@
-https://boardgamegeek.com/boardgame/822/carcassonne/images
-https://wikicarpedia.com/index.php/Main_Page
-https://www.ebay.co.uk/itm/114874618783?mkevt=1&mkcid=1&mkrid=710-53481-19255-0&campid=5338722076&toolid=10001
-https://store.steampowered.com/app/1455840/Dorfromantik/
-
-A) Sliding puzzle :-)
-
-B) Solve this (https://norvig.com/carcassonne.html) with coputer, all solutions
-
-C)
 Make cities/villages, roads, riviers.
 Scoring:
 - 1 point = 1 new tile
@@ -53,9 +43,20 @@ User interface:
 - allow zoom in/out 4x ?
 * Pefect tile bonus? 4 / 8 
 
-'make images:
-'- Open CarcKartenlisteGesamt0708.pdf (with Atril)
-'- Zoom to 200%, screen shot
-'- Gimp: Crop to 200x200, save as bmp
-'- Filename: TRBLC.bmp for Top Right Bottom Left Center
-'- Foxit reader, tile tiles: 230%
+make images:
+- Open CarcKartenlisteGesamt0708.pdf (with Atril)
+- Zoom to 200%, screen shot
+- Gimp: Crop to 200x200, save as bmp
+- Filename: TRBLC.bmp for Top Right Bottom Left Center
+- Foxit reader, tile tiles: 230%
+
+More images:
+ https://boardgamegeek.com/boardgame/822/carcassonne/images
+ https://wikicarpedia.com/index.php/Main_Page
+ https://www.ebay.co.uk/itm/114874618783?mkevt=1&mkcid=1&mkrid=710-53481-19255-0&campid=5338722076&toolid=10001
+ https://store.steampowered.com/app/1455840/Dorfromantik/
+
+Other ideas, with tiles:
+- Sliding puzzle
+- Solver for https://norvig.com/carcassonne.html
+

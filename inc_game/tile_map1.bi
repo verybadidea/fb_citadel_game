@@ -33,15 +33,6 @@ next
 print       
 #endmacro
 
-type tile_type
-	dim as long id
-	dim as long rot 'rotation: 0...3
-	'dim as ubyte visited(0 to 4) 'sides + center
-	'dim as ubyte property(0 to 4) 'sides + center
-end type
-
-#define NO_TILE type<tile_type>(-1, -1)
-
 'class wrapper for game
 
 type tile_map
