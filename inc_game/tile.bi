@@ -1,3 +1,23 @@
+const as long PROP_X = 0 'none
+const as long PROP_G = 1 'grass
+const as long PROP_R = 2 'road
+const as long PROP_C = 3 'city
+const as long PROP_W = 4 'water
+const as long PROP_A = 5 'abby/citadel
+const as long PROP_B = 6 'blazon
+
+const as long PROP_UP = 0
+const as long PROP_RI = 1
+const as long PROP_DN = 2
+const as long PROP_LE = 3
+const as long PROP_CT = 4
+
+const as long AREA_UP = 0
+const as long AREA_RI = 1
+const as long AREA_DN = 2
+const as long AREA_LE = 3
+const as long AREA_CT = 4
+
 'basic tile poperties for map
 type tile_type
 	dim as long id

@@ -29,6 +29,8 @@ Aanpak:
 - Na max stapels, steeds 10+ punten bij abdij rondom (vanaf het begin al +10 punten?)
 - 10+ stad, weg, water = 10 punten extra?
 - Unlock extra stashes (from 1 to 4) by: 20+ tile city, 20+ tile road, 20+ tile water?
+- Plaatsing Abby: points = number of neigbours + 1 (self)
+- Plce tile neare abby (or abby itself), fully surrounded? extra stash.
 
 User interface:
 - 1 start tile, not by user

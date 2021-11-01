@@ -26,6 +26,7 @@
 ' road: xxxx + xx
 ' city: xxxx + xx
 ' river: xxxx + xx
+'no score for imcomplete road/city/water
 'score display
 'multiple stashes
 'change map offset on zoom in/out, center on mouse pos
@@ -47,6 +48,22 @@
 'multiple stash
 'sound & music
 
+type score_type
+	dim as long r, c, w, a 'road, city, water, abby
+	declare sub clr()
+end type
+
+sub score_type.clr()
+	r = 0 : c = 0 : w = 0 : a = 0
+end sub
+'dim shared as scoring_type score '<-- TODO: remove global later
+
+'#include "../../_code_lib_new_/logger_v01.bi"
+'dim shared as logger_type logger = logger_type("gamelog.txt", 5, 1.0)
+'logger.add("Start")
+
+'-------------------------------------------------------------------------------
+
 #include "fbgfx.bi"
 #include "inc_lib/general.bi"
 #include "inc_lib/image_buffer_v03.bi"
@@ -55,8 +72,10 @@
 #include "inc_game/stash.bi"
 #include "inc_game/grid_coord.bi"
 #include "inc_game/tile.bi"
+#include "inc_game/visited_list.bi"
 #include "inc_game/tile_map1.bi"
 #include "inc_game/tile_collection.bi"
+
 
 const SW = 960, SH = 720
 screenres SW, SH, 32
@@ -103,37 +122,8 @@ function triangular(n as integer) as integer
 	return (n * (n + 1)) shr 1
 end function
 
-'call after new tile placed
-function checkPlacement(x as long, y as long) as long
-	'for each side:
-		'if visited = 0: '(is tile, but not visited)
-			'propType = tile.prop(...)
-			'score += follow(x, y, side, propType)
-		'if side = 0/t, check: 1/r, 2/b, 3/l, tile above
-		'if side = 1/r, check: 0/t, 2/b, 3/l, tile above
-	return 0
-end function
-
 '~ function score(rawCount as integer)
 	'~ return rawCount + triangular(rawCount \ 10) as integer
-'~ end function
-
-'check on new tile placement:
-'loop each 4 side:
-' if road & not visited:
-'  set visited
-'  check connected road sections (including this tile)
-'  mark visited
-'  count ++
-'  display * at each road section (* = 1 point) for 1 second
-'  get new tiles = f(score)
-'when done, removed visited flags. how?
-'visited is path of map or separate list?
-
-'make part of tile_map class?
-'return gained score
-'~ function tileScore(map as tile_map, tilePos as int2d) as integer
-	'~ for i as long = 0 to 
 '~ end function
 
 '--- main ----------------------------------------------------------------------
@@ -146,7 +136,7 @@ scrnPosOnMap = type((grid.w - SW) \ 2, (grid.h - SH) \ 2) 'center on tile 0,0
 
 const as double scrollSpeed = 1000 / 4 '250 pixels / second
 
-randomize timer
+randomize 1234 'timer
 dim as stash_type stash
 dim as long stashSize = 50
 for i as integer = 0 to stashSize - 1
@@ -155,7 +145,6 @@ for i as integer = 0 to stashSize - 1
 next
 
 dim as long match
-dim as int2d nbDeltaPos(0 to 3) = {int2d(0, -1), int2d(+1, 0), int2d(0, +1), int2d(-1, 0)}
 dim as tile_type nbTile(0 to 3)
 
 dim as mousetype mouse
@@ -183,7 +172,7 @@ while not multikey(FB.SC_Q)
 			showPreview = 1
 			match = 0 'reset all sides
 			for i as long = 0 to 3
-				nbTile(i) = map.getTile(mouseGridPos + nbDeltaPos(i))
+				nbTile(i) = map.getTile(mouseGridPos + map.nbDeltaPos(i))
 				if nbTile(i).id > 0 then 'a valid neighbour tile
 					neigbours += 1
 					dim as long nbSide = (i + 2) mod 4
@@ -240,6 +229,7 @@ while not multikey(FB.SC_Q)
 				if allowPlacement = 1 then
 					map.setTile(mouseGridPos, sTile) 'place tile
 					sTile.id = -1 'set selected tile invalid
+					map.checkPlacement(mouseGridPos.x, mouseGridPos.y)
 				end if
 			end if
 		end if
@@ -284,8 +274,8 @@ while not multikey(FB.SC_Q)
 			for i as long = 0 to 3
 				if nbTile(i).id > 0 then 'a valid neighbour
 					dim as image_type ptr pImgImg = iif(bit(match, i), pImgOk, pImgNok)
-					dim as long x = scrnPos.x + (grid.w + nbDeltaPos(i).x * grid.w) \ 2
-					dim as long y = scrnPos.y + (grid.h + nbDeltaPos(i).y * grid.h) \ 2
+					dim as long x = scrnPos.x + (grid.w + map.nbDeltaPos(i).x * grid.w) \ 2
+					dim as long y = scrnPos.y + (grid.h + map.nbDeltaPos(i).y * grid.h) \ 2
 					pImgImg->drawxym(x, y, IHA_CENTER, IVA_CENTER, IDM_ALPHA)
 				end if
 			next
@@ -299,6 +289,11 @@ while not multikey(FB.SC_Q)
 	draw string (10, 85), "* place on board if allowed (left button)", &hffff00
 	draw string (10, 100), "* zoom in/out, with no tile, with wheel", &hffff00
 	draw string (10, 115), "* drag view with right button", &hffff00
+
+	draw string (10, 145), "Road score:  " & str(map.score.r), &hffff00
+	draw string (10, 160), "Water score: " & str(map.score.w), &hffff00
+	draw string (10, 175), "City score:  " & str(map.score.c), &hffff00
+	draw string (10, 190), "Abby score:  " & str(map.score.a), &hffff00
 	
 	'draw string (80, 30), str(scrollDist), &hffff00
 	'locate 2,1 : print scrnPosOnMap.x, scrnPosOnMap.y
