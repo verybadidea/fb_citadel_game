@@ -41,7 +41,7 @@ type tile_map
 	dim as visited_list vList
 	dim as score_type score
 	declare sub clean()
-	declare function validPos(row as long, col as long) as boolean
+	declare function validTile(row as long, col as long) as boolean
 	declare function getTile(row as long, col as long) as tile_type
 	declare sub setTile(row as long, col as long, tile_ as tile_type)
 	declare function getTile overload(pos_ as int2d) as tile_type
@@ -54,9 +54,10 @@ sub tile_map.clean()
 	'''free...
 end sub
 
-function tile_map.validPos(row as long, col as long) as boolean
+function tile_map.validTile(row as long, col as long) as boolean
 	if (row < lbound(tile, 1)) or (row > ubound(tile, 1)) then return FALSE
 	if (col < lbound(tile, 2)) or (col > ubound(tile, 2)) then return FALSE
+	if tile(row, col).id <= 0 then return FALSE 'valid pos, no tile
 	return TRUE
 end function
 
@@ -92,18 +93,35 @@ end sub
 
 'check on new tile placement
 function tile_map.checkPlacement(x as long, y as long) as long
+	'voor city aparte score
+	'start with svaed score = -1
+	'return >= 0 save score
+	'next tile return -1? no update save score
+	'next tile return >= 0 add to saved score
 	score.clr()
 	for iArea as long = 0 to 3
 		dim as long prop = tile(x, y).prop(iArea)
+		score.t = 0
 		tryWalk(x, y, iArea, prop)
+		if score.t > 0 then score.c += score.t
 	next
+	 if score.r < 0 then score.r = 0
+	 if score.w < 0 then score.w = 0
+	 score.updateTotal()
 	vList.clr()
 	return 0
 end function
 
 function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as long
 	'check valid map position
-	if validPos(x, y) = FALSE then return -1
+	if validTile(x, y) = FALSE then
+		 'This means end of road/city/water
+		 if prop = PROP_R then score.r = -1
+		 if prop = PROP_W then score.w = -1
+		 if prop = PROP_C then score.t = -1 'cannot be blazon on the edge
+		 'Bug: A tile with 2 city parts always results in -1 !!!
+		return -1
+	end if
 	'check correct type
 	if tile(x, y).prop(area) <> prop then return -1
 	'check not yet visited
@@ -116,9 +134,9 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 				if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
 					vList.vTile(tileIdx).area(iArea) = 1 'set visited
 					if prop = PROP_R then
-						score.r += 1
+						if score.r >= 0 then score.r += 1
 					elseif prop = PROP_W then
-						score.w += 1
+						if score.w >= 0 then score.w += 1
 					end if
 					'check neighbour tile
 					select case iArea
@@ -138,13 +156,15 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 		dim as ulong center = tile(x, y).prop(AREA_CT)
 		if center = PROP_C or center = PROP_B then
 			vList.vTile(tileIdx).area(AREA_CT) = 1 'set visited (although not needed)
-			score.c += iif(center = PROP_B, 2, 1) 'bonus point for blazon tile
+			if score.t >= 0 then
+				score.t += iif(center = PROP_B, 2, 1) 'bonus point for blazon tile
+			end if
 			'loop edge tiles (and self) and try neighbours
 			for iArea as long = 0 to 3
 				if tile(x, y).prop(iArea) = prop then
 					if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
 						vList.vTile(tileIdx).area(iArea) = 1 'set visited
-						score.c += 1
+						if score.t >= 0 then score.t += 1
 						'check neighbour tile
 						select case iArea
 							case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
@@ -157,7 +177,7 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 			next
 		else 'city end on this edge, 1 point only
 			vList.vTile(tileIdx).area(area) = 1 'set visited
-			score.c += 1
+			if score.t >= 0 then score.t += 1
 			select case area
 				case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
 				case AREA_RI : tryWalk(x + 1, y, AREA_LE, prop)

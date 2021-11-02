@@ -19,16 +19,16 @@
 'add re-sizeble and re-usable array for visited tiles
 'set map tile properties on placement -> Change neighbour check
 'make add to rnd_tile function, using propability
+'no score for imcomplete road/city/water
+'detect city/road/water completion
+'score display
 
 'TODO:
+'abby scoring
 'add more tiles
-'total score:
-' road: xxxx + xx
-' city: xxxx + xx
-' river: xxxx + xx
-'no score for imcomplete road/city/water
-'score display
 'multiple stashes
+'get tiles for score + animate
+'animate scoring points with stars
 'change map offset on zoom in/out, center on mouse pos
 'move grid-view with mouse & keys
 'zoom in/out with =/- key and ui-buttons + q - (q = magnifier)
@@ -36,11 +36,9 @@
 'check for water/road/city completion
 'switch to tile_map2.bi (list of rows)
 'problem tile: 2 disconnected roads
-'how to detect city completion?
-'-Use Wall vs City property? No, not needed! 'Use H (H20) for water?
-'-A city side, must always be connected to another tile (with a city side).
 'make stash empty image
 'options menu with screen resolution & full screen option
+'sounds
 
 'LATERs:
 'rotate card with space also
@@ -49,14 +47,20 @@
 'sound & music
 
 type score_type
-	dim as long r, c, w, a 'road, city, water, abby
+	dim as long r, c, w, a, t 'road, city, water, abby, temp
+	dim as long delta, total
 	declare sub clr()
+	declare sub updateTotal()
 end type
 
 sub score_type.clr()
 	r = 0 : c = 0 : w = 0 : a = 0
 end sub
-'dim shared as scoring_type score '<-- TODO: remove global later
+
+sub score_type.updateTotal()
+	delta = (r + c + w + a)
+	total += delta
+end sub
 
 '#include "../../_code_lib_new_/logger_v01.bi"
 'dim shared as logger_type logger = logger_type("gamelog.txt", 5, 1.0)
@@ -294,6 +298,8 @@ while not multikey(FB.SC_Q)
 	draw string (10, 160), "Water score: " & str(map.score.w), &hffff00
 	draw string (10, 175), "City score:  " & str(map.score.c), &hffff00
 	draw string (10, 190), "Abby score:  " & str(map.score.a), &hffff00
+	draw string (10, 205), "Delta score:  " & str(map.score.delta), &hffff00
+	draw string (10, 220), "Total score:  " & str(map.score.total), &hffff00
 	
 	'draw string (80, 30), str(scrollDist), &hffff00
 	'locate 2,1 : print scrnPosOnMap.x, scrnPosOnMap.y
