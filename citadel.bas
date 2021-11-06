@@ -24,9 +24,10 @@
 'score display
 
 'TODO:
-'abby scoring
+'change x,y / row,col in tile_map 
+'points for each tile placed equal to number of neighbours (max 8) + 1 for abby
+'abby check, multiple stashes
 'add more tiles
-'multiple stashes
 'get tiles for score + animate
 'animate scoring points with stars
 'change map offset on zoom in/out, center on mouse pos
@@ -38,6 +39,7 @@
 'problem tile: 2 disconnected roads
 'make stash empty image
 'options menu with screen resolution & full screen option
+'load and save game
 'sounds
 
 'LATERs:
@@ -45,22 +47,6 @@
 'font library
 'multiple stash
 'sound & music
-
-type score_type
-	dim as long r, c, w, a, t 'road, city, water, abby, temp
-	dim as long delta, total
-	declare sub clr()
-	declare sub updateTotal()
-end type
-
-sub score_type.clr()
-	r = 0 : c = 0 : w = 0 : a = 0
-end sub
-
-sub score_type.updateTotal()
-	delta = (r + c + w + a)
-	total += delta
-end sub
 
 '#include "../../_code_lib_new_/logger_v01.bi"
 'dim shared as logger_type logger = logger_type("gamelog.txt", 5, 1.0)
@@ -76,10 +62,10 @@ end sub
 #include "inc_game/stash.bi"
 #include "inc_game/grid_coord.bi"
 #include "inc_game/tile.bi"
+#include "inc_game/score.bi"
 #include "inc_game/visited_list.bi"
 #include "inc_game/tile_map1.bi"
 #include "inc_game/tile_collection.bi"
-
 
 const SW = 960, SH = 720
 screenres SW, SH, 32
@@ -255,7 +241,7 @@ while not multikey(FB.SC_Q)
 			dim as tile_type tile = map.getTile(x, y)
 			if tile.Id >= 0 then
 				tileSet.pImg(tile.id, tile.rot, tileSizeIdx)->drawxym(scrnPos.x, scrnPos.y, IHA_LEFT, IVA_TOP)
-				'draw string (scrnPos.x + 10, scrnPos.y + 10), str(tileProp(tile.id).occurance), 
+				draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id)
 			end if
 		next
 	next

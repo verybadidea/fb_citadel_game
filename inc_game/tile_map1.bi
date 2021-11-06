@@ -46,6 +46,7 @@ type tile_map
 	declare sub setTile(row as long, col as long, tile_ as tile_type)
 	declare function getTile overload(pos_ as int2d) as tile_type
 	declare sub setTile overload(pos_ as int2d, tile_ as tile_type)
+	declare function countNeighbours(x as long, y as long) as long
 	declare function checkPlacement(x as long, y as long) as long
 	declare function tryWalk(x as long, y as long, area as long, prop as long) as long
 end type
@@ -91,13 +92,18 @@ sub tile_map.setTile(pos_ as int2d, tile_ as tile_type)
 	setTile(pos_.x, pos_.y, tile_)
 end sub
 
+'check 4 neighbours
+function tile_map.countNeighbours(x as long, y as long) as long
+	dim as long countNb = 0
+	if validTile(x + 1, y + 0) then countNb += 1
+	if validTile(x - 1, y + 0) then countNb += 1
+	if validTile(x + 0, y + 1) then countNb += 1
+	if validTile(x + 0, y - 1) then countNb += 1
+	return countNb
+end function
+
 'check on new tile placement
 function tile_map.checkPlacement(x as long, y as long) as long
-	'voor city aparte score
-	'start with svaed score = -1
-	'return >= 0 save score
-	'next tile return -1? no update save score
-	'next tile return >= 0 add to saved score
 	score.clr()
 	for iArea as long = 0 to 3
 		dim as long prop = tile(x, y).prop(iArea)
@@ -105,9 +111,11 @@ function tile_map.checkPlacement(x as long, y as long) as long
 		tryWalk(x, y, iArea, prop)
 		if score.t > 0 then score.c += score.t
 	next
-	 if score.r < 0 then score.r = 0
-	 if score.w < 0 then score.w = 0
-	 score.updateTotal()
+	if score.r < 0 then score.r = 0
+	if score.w < 0 then score.w = 0
+	score.n = countNeighbours(x, y)
+	if tile(x,y).prop(AREA_CT) = PROP_A then score.n += 1
+	score.updateTotal()
 	vList.clr()
 	return 0
 end function
