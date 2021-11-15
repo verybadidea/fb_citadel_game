@@ -2,21 +2,21 @@
 
 #macro redimpreserve(a, d1, d2) 'a = 2d-array, dimension 1 & 2
 scope
-	dim as integer row, col
+	dim as integer x, y
 	redim as typeof(a) copy(d1, d2)
-	for row = d1
-		for col = d2
-			if row >= lbound(a, 1) and row <= ubound(a, 1) then
-				if col >= lbound(a, 2) and col <= ubound(a, 2) then   
-					copy(row, col) = a(row, col)
+	for x = d1
+		for y = d2
+			if x >= lbound(a, 1) and x <= ubound(a, 1) then
+				if y >= lbound(a, 2) and y <= ubound(a, 2) then   
+					copy(x, y) = a(x, y)
 				end if
 			end if
 		next
 	next
 	redim a(d1, d2)
-	for row = d1
-		for col = d2
-			a(row, col) = copy(row, col)
+	for x = d1
+		for y = d2
+			a(x, y) = copy(x, y)
 		next
 	next
 end scope
@@ -24,9 +24,9 @@ end scope
 
 #macro printout(d) 'd = 2d-array
 print
-for row as long = lbound(d, 1) to ubound(d, 1)
-	for col as long = lbound(d, 2) to ubound(d, 2)
-		print d(row, col);
+for x as long = lbound(d, 1) to ubound(d, 1)
+	for y as long = lbound(d, 2) to ubound(d, 2)
+		print d(x, y);
 	next
 	print
 next
@@ -37,51 +37,57 @@ print
 
 type tile_map
 	dim as int2d nbDeltaPos(0 to 3) = {int2d(0, -1), int2d(+1, 0), int2d(0, +1), int2d(-1, 0)}
-	dim as tile_type tile(any, any) 'row, col
+	dim as tile_type tile(any, any) 'x, y
 	dim as visited_list vList
-	dim as score_type score
+	dim as score_type ptr pScore
+	declare constructor(byref score as score_type)
 	declare sub clean()
-	declare function validTile(row as long, col as long) as boolean
-	declare function getTile(row as long, col as long) as tile_type
-	declare sub setTile(row as long, col as long, tile_ as tile_type)
+	declare function validTile(x as long, y as long) as boolean
+	declare function getTile(x as long, y as long) as tile_type
+	declare sub setTile(x as long, y as long, tile_ as tile_type)
 	declare function getTile overload(pos_ as int2d) as tile_type
 	declare sub setTile overload(pos_ as int2d, tile_ as tile_type)
-	declare function countNeighbours(x as long, y as long) as long
+	declare function nbAbbyCheck(x as long, y as long) as long
 	declare function checkPlacement(x as long, y as long) as long
 	declare function tryWalk(x as long, y as long, area as long, prop as long) as long
 end type
+
+constructor tile_map(byref score as score_type)
+	pScore = @score
+	if pScore = 0 then panic("tile_map: pScore = 0")
+end constructor
 
 sub tile_map.clean()
 	'''free...
 end sub
 
-function tile_map.validTile(row as long, col as long) as boolean
-	if (row < lbound(tile, 1)) or (row > ubound(tile, 1)) then return FALSE
-	if (col < lbound(tile, 2)) or (col > ubound(tile, 2)) then return FALSE
-	if tile(row, col).id <= 0 then return FALSE 'valid pos, no tile
+function tile_map.validTile(x as long, y as long) as boolean
+	if (x < lbound(tile, 1)) or (x > ubound(tile, 1)) then return FALSE
+	if (y < lbound(tile, 2)) or (y > ubound(tile, 2)) then return FALSE
+	if tile(x, y).id <= 0 then return FALSE 'valid pos, no tile
 	return TRUE
 end function
 
-function tile_map.getTile(row as long, col as long) as tile_type
-	if (row < lbound(tile, 1)) or (row > ubound(tile, 1)) then return NO_TILE
-	if (col < lbound(tile, 2)) or (col > ubound(tile, 2)) then return NO_TILE
-	return tile(row, col)
+function tile_map.getTile(x as long, y as long) as tile_type
+	if (x < lbound(tile, 1)) or (x > ubound(tile, 1)) then return NO_TILE
+	if (y < lbound(tile, 2)) or (y > ubound(tile, 2)) then return NO_TILE
+	return tile(x, y)
 end function
 
-sub tile_map.setTile(row as long, col as long, tile_ as tile_type)
-	dim as integer lbRow = lbound(tile, 1)
-	dim as integer ubRow = ubound(tile, 1)
-	dim as integer lbCol = lbound(tile, 2)
-	dim as integer ubCol = ubound(tile, 2)
+sub tile_map.setTile(x as long, y as long, tile_ as tile_type)
+	dim as integer lbx = lbound(tile, 1)
+	dim as integer ubx = ubound(tile, 1)
+	dim as integer lby = lbound(tile, 2)
+	dim as integer uby = ubound(tile, 2)
 	dim as long resize = 0
-	if row < lbRow then lbRow = row : resize = 1
-	if row > ubRow then ubRow = row : resize = 1
-	if col < lbCol then lbCol = col : resize = 1
-	if col > ubCol then ubCol = col : resize = 1
+	if x < lbx then lbx = x : resize = 1
+	if x > ubx then ubx = x : resize = 1
+	if y < lby then lby = y : resize = 1
+	if y > uby then uby = y : resize = 1
 	if resize = 1 then
-		redimpreserve(tile, lbRow to ubRow, lbCol to ubCol)
+		redimpreserve(tile, lbx to ubx, lby to uby)
 	end if
-	tile(row, col) = tile_
+	tile(x, y) = tile_
 end sub
 
 function tile_map.getTile(pos_ as int2d) as tile_type
@@ -92,30 +98,30 @@ sub tile_map.setTile(pos_ as int2d, tile_ as tile_type)
 	setTile(pos_.x, pos_.y, tile_)
 end sub
 
-'check 4 neighbours
-function tile_map.countNeighbours(x as long, y as long) as long
-	dim as long countNb = 0
-	if validTile(x + 1, y + 0) then countNb += 1
-	if validTile(x - 1, y + 0) then countNb += 1
-	if validTile(x + 0, y + 1) then countNb += 1
-	if validTile(x + 0, y - 1) then countNb += 1
-	return countNb
+'check 4 neighbours and abby
+function tile_map.nbAbbyCheck(x as long, y as long) as long
+	dim as long count = 0
+	if validTile(x + 1, y + 0) then count += 1
+	if validTile(x - 1, y + 0) then count += 1
+	if validTile(x + 0, y + 1) then count += 1
+	if validTile(x + 0, y - 1) then count += 1
+	if tile(x, y).prop(AREA_CT) = PROP_A then count += 1
+	return triangular(count - 1)
 end function
 
 'check on new tile placement
 function tile_map.checkPlacement(x as long, y as long) as long
-	score.clr()
+	pScore->clr()
 	for iArea as long = 0 to 3
 		dim as long prop = tile(x, y).prop(iArea)
-		score.t = 0
+		pScore->t = 0
 		tryWalk(x, y, iArea, prop)
-		if score.t > 0 then score.c += score.t
+		if pScore->t > 0 then pScore->c += pScore->t
 	next
-	if score.r < 0 then score.r = 0
-	if score.w < 0 then score.w = 0
-	score.n = countNeighbours(x, y)
-	if tile(x,y).prop(AREA_CT) = PROP_A then score.n += 1
-	score.updateTotal()
+	if pScore->r < 0 then pScore->r = 0
+	if pScore->w < 0 then pScore->w = 0
+	pScore->n = nbAbbyCheck(x, y)
+	pScore->updateTotal()
 	vList.clr()
 	return 0
 end function
@@ -124,9 +130,9 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 	'check valid map position
 	if validTile(x, y) = FALSE then
 		 'This means end of road/city/water
-		 if prop = PROP_R then score.r = -1
-		 if prop = PROP_W then score.w = -1
-		 if prop = PROP_C then score.t = -1 'cannot be blazon on the edge
+		 if prop = PROP_R then pScore->r = -1
+		 if prop = PROP_W then pScore->w = -1
+		 if prop = PROP_C then pScore->t = -1 'cannot be blazon on the edge
 		 'Bug: A tile with 2 city parts always results in -1 !!!
 		return -1
 	end if
@@ -142,9 +148,9 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 				if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
 					vList.vTile(tileIdx).area(iArea) = 1 'set visited
 					if prop = PROP_R then
-						if score.r >= 0 then score.r += 1
+						if pScore->r >= 0 then pScore->r += 1
 					elseif prop = PROP_W then
-						if score.w >= 0 then score.w += 1
+						if pScore->w >= 0 then pScore->w += 1
 					end if
 					'check neighbour tile
 					select case iArea
@@ -164,15 +170,15 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 		dim as ulong center = tile(x, y).prop(AREA_CT)
 		if center = PROP_C or center = PROP_B then
 			vList.vTile(tileIdx).area(AREA_CT) = 1 'set visited (although not needed)
-			if score.t >= 0 then
-				score.t += iif(center = PROP_B, 2, 1) 'bonus point for blazon tile
+			if pScore->t >= 0 then
+				pScore->t += iif(center = PROP_B, 2, 1) 'bonus point for blazon tile
 			end if
 			'loop edge tiles (and self) and try neighbours
 			for iArea as long = 0 to 3
 				if tile(x, y).prop(iArea) = prop then
 					if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
 						vList.vTile(tileIdx).area(iArea) = 1 'set visited
-						if score.t >= 0 then score.t += 1
+						if pScore->t >= 0 then pScore->t += 1
 						'check neighbour tile
 						select case iArea
 							case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
@@ -185,7 +191,7 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as l
 			next
 		else 'city end on this edge, 1 point only
 			vList.vTile(tileIdx).area(area) = 1 'set visited
-			if score.t >= 0 then score.t += 1
+			if pScore->t >= 0 then pScore->t += 1
 			select case area
 				case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
 				case AREA_RI : tryWalk(x + 1, y, AREA_LE, prop)

@@ -22,14 +22,24 @@
 'no score for imcomplete road/city/water
 'detect city/road/water completion
 'score display
+'change x,y / row,col in tile_map 
+'points for tiles placed with neighours > 2 + 1 for abby (1,3,6,10,15)
 
 'TODO:
-'change x,y / row,col in tile_map 
-'points for each tile placed equal to number of neighbours (max 8) + 1 for abby
+'get tiles for score, display:
+'- tile points
+'- city + bonus points
+'- road + bonus points
+'- water + bonus points
+'add tile.insertFromBottom()
+'function for zoom in/out, also via keys
+'animate points, large & center, fade to topleft, nome new tiles to stash
+'animate scoring points with stars
 'abby check, multiple stashes
 'add more tiles
-'get tiles for score + animate
-'animate scoring points with stars
+'allow map view at game over
+'animate getting tiles for points scored
+'map draw_map/grid function
 'change map offset on zoom in/out, center on mouse pos
 'move grid-view with mouse & keys
 'zoom in/out with =/- key and ui-buttons + q - (q = magnifier)
@@ -105,20 +115,11 @@ pImgQu = imgBufImages.image(IMG_QUESTION).shrink
 pImgOk = imgBufImages.image(IMG_CHECK).shrink
 pImgNok = imgBufImages.image(IMG_CROSS).shrink
 
-'-------------------------------------------------------------------------------
-
-'triangular number sesies: 1,3,6,10,15,21,...
-function triangular(n as integer) as integer
-	return (n * (n + 1)) shr 1
-end function
-
-'~ function score(rawCount as integer)
-	'~ return rawCount + triangular(rawCount \ 10) as integer
-'~ end function
-
 '--- main ----------------------------------------------------------------------
 
-dim as tile_map map
+dim as score_type score
+
+dim as tile_map map = tile_map(score)
 map.setTile(0, 0, tileSet.tile(1)) 'set first tile 1 at 0,0
 
 dim as int2d scrnPosOnMap
@@ -126,12 +127,12 @@ scrnPosOnMap = type((grid.w - SW) \ 2, (grid.h - SH) \ 2) 'center on tile 0,0
 
 const as double scrollSpeed = 1000 / 4 '250 pixels / second
 
-randomize 1234 'timer
+randomize timer '1234
 dim as stash_type stash
 dim as long stashSize = 50
 for i as integer = 0 to stashSize - 1
-	stash.push(tileSet.getRandomId())
-	'stash.push(tileSet.getRandomDistId())
+	'stash.push(tileSet.getRandomId())
+	stash.push(tileSet.getRandomDistId())
 next
 
 dim as long match
@@ -143,8 +144,9 @@ dim as integer mx, my
 dim as long mouseDrag = 0
 dim as tile_type sTile = type(-1, 0) 'id, rot (selected tile)
 dim as double tLast = timer, dt = 0
+dim as string quitStr = ""
 
-while not multikey(FB.SC_Q)
+while quitStr = ""
 	mouseEvent = handleMouse(mouse)
 	mx = mouse.pos.x
 	my = mouse.pos.y
@@ -210,8 +212,10 @@ while not multikey(FB.SC_Q)
 				sTile.id = -1
 			else
 				'get from stash
-				dim as long id = stash.pop()
-				sTile = tileSet.tile(id)
+				if stash.size() > 0 then
+					dim as long id = stash.pop()
+					sTile = tileSet.tile(id)
+				end if
 			end if
 		else
 			'place on grid/map
@@ -229,6 +233,13 @@ while not multikey(FB.SC_Q)
 		scrnPosOnMap -= mouse.posChange
 	end if
 
+	dim as string key = inkey()
+	select case key
+		case chr(27): quitStr = "Abort by user"
+		case "-", "_" 'zoom out
+		case "=", "+" 'zoom out
+	end select
+
 	screenlock
 	line(0, 0)-(SW - 1, SH - 1), &h000000, bf 'clear
 	'draw grid
@@ -241,7 +252,7 @@ while not multikey(FB.SC_Q)
 			dim as tile_type tile = map.getTile(x, y)
 			if tile.Id >= 0 then
 				tileSet.pImg(tile.id, tile.rot, tileSizeIdx)->drawxym(scrnPos.x, scrnPos.y, IHA_LEFT, IVA_TOP)
-				draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id)
+				'draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id) 'show tile id
 			end if
 		next
 	next
@@ -280,17 +291,26 @@ while not multikey(FB.SC_Q)
 	draw string (10, 100), "* zoom in/out, with no tile, with wheel", &hffff00
 	draw string (10, 115), "* drag view with right button", &hffff00
 
-	draw string (10, 145), "Road score:  " & str(map.score.r), &hffff00
-	draw string (10, 160), "Water score: " & str(map.score.w), &hffff00
-	draw string (10, 175), "City score:  " & str(map.score.c), &hffff00
-	draw string (10, 190), "Abby score:  " & str(map.score.a), &hffff00
-	draw string (10, 205), "Delta score:  " & str(map.score.delta), &hffff00
-	draw string (10, 220), "Total score:  " & str(map.score.total), &hffff00
+	draw string (10, 145), "Road score:  " & str(score.r) & " (" & str(score.br) & ")", &hffff00
+	draw string (10, 160), "Water score: " & str(score.w) & " (" & str(score.bw) & ")", &hffff00
+	draw string (10, 175), "City score:  " & str(score.c) & " (" & str(score.bc) & ")", &hffff00
+	draw string (10, 190), "Abby score:  " & str(score.a), &hffff00
+	draw string (10, 205), "Neigb score:  " & str(score.n), &hffff00
+	draw string (10, 220), "Delta score: " & str(score.delta), &hffff00
+	draw string (10, 235), "Total score: " & str(score.total), &hffff00
+
+	draw string (10, SH - 25), "Mouse pos: " & mouseGridPos, &hffff00
 	
 	'draw string (80, 30), str(scrollDist), &hffff00
 	'locate 2,1 : print scrnPosOnMap.x, scrnPosOnMap.y
-	'locate 3,1 : print mouseGridPos.x, mouseGridPos.y
 	screenunlock
+
+	'update tiles and check if any left
+	dim as long tileGain = score.tilesGained()
+	for i as long = 1 to tileGain
+		stash.push(tileSet.getRandomId())
+	next
+	if stash.size() = 0 and sTile.id = -1 then quitStr = "No tiles left"
 
 	sleep 1, 1
 	dim as double tNow = timer
@@ -298,5 +318,8 @@ while not multikey(FB.SC_Q)
 	tLast = tNow
 wend
 
+dim as string endText = "GAVE OVER"
+draw string ((SW - len(endText) * 8) \ 2, (SH - 32) \ 2), endText, &h00ffff
+draw string ((SW - len(quitStr) * 8) \ 2, (SH - 0) \ 2), quitStr, &h00ffff
 getkey()
 end
