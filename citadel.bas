@@ -1,6 +1,6 @@
 'DONE:
-'draw stash, with number of cards indication
-'pick card from stash, rotate with wheel
+'draw stack, with number of cards indication
+'pick card from stack, rotate with wheel
 'place card on grid
 'set rotation on map
 'read tile properties from filename
@@ -23,40 +23,53 @@
 'detect city/road/water completion
 'score display
 'change x,y / row,col in tile_map 
-'points for tiles placed with neighours > 2 + 1 for abby (1,3,6,10,15)
+'points for tiles placed with neighours > 2 + 1 for abbey (1,3,6,10,15)
+'linked list for stack. Add to bottom added.
+'zoom in/out, also via keys -> function zoom(+/-)
+'multiple stackes
+'abbey check
 
 'TODO:
-'get tiles for score, display:
-'- tile points
-'- city + bonus points
-'- road + bonus points
-'- water + bonus points
-'add tile.insertFromBottom()
-'function for zoom in/out, also via keys
-'animate points, large & center, fade to topleft, nome new tiles to stash
+'limit other stack to 1
+'change numStack to bitfield, make cross abby an exact match (no abbeys at diagonals)
+'more simple point system, 1 point per tile
+'end roads at crossing? Check official rules of carcassonne
+'add registered key class + vairable key configuration
+'rotate card with space also
+'get tiles for score, display nicely: tile-, city-, road-, waterpoints + bonus
+'add more tiles: water
+'animate points, large & center, fade to topleft, nome new tiles to stack
 'animate scoring points with stars
-'abby check, multiple stashes
-'add more tiles
 'allow map view at game over
 'animate getting tiles for points scored
 'map draw_map/grid function
 'change map offset on zoom in/out, center on mouse pos
 'move grid-view with mouse & keys
-'zoom in/out with =/- key and ui-buttons + q - (q = magnifier)
 'right mouse button / escape: dragging tile back to stach movement
 'check for water/road/city completion
 'switch to tile_map2.bi (list of rows)
 'problem tile: 2 disconnected roads
-'make stash empty image
+'make stack empty image
 'options menu with screen resolution & full screen option
 'load and save game
 'sounds
+'high score list
+'difficulty setting (each own high score)
+'list of challenges:
+'- each with different start + random fixed seed
+'- also the basic game with random seed
+'different images for incomplete cities, raods, etc. See: https://www.youtube.com/watch?v=fTj2159ShoY
 
 'LATERs:
-'rotate card with space also
+'tutorial/help with screenshots and page numbers
 'font library
-'multiple stash
+'multiple stack
 'sound & music
+
+'DON'T:
+'zoom in/out ui-buttons + q - (q = magnifier)
+
+'-------------------------------------------------------------------------------
 
 '#include "../../_code_lib_new_/logger_v01.bi"
 'dim shared as logger_type logger = logger_type("gamelog.txt", 5, 1.0)
@@ -69,7 +82,7 @@
 #include "inc_lib/image_buffer_v03.bi"
 #include "inc_lib/mouse_v02.bi"
 #include "inc_game/buttons.bi"
-#include "inc_game/stash.bi"
+#include "inc_game/stack_dll.bi"
 #include "inc_game/grid_coord.bi"
 #include "inc_game/tile.bi"
 #include "inc_game/score.bi"
@@ -93,11 +106,6 @@ dim as long wGrid_ = tileSet.pImg(0, 0, tileSizeIdx)->pFbImg->width
 dim as long hGrid_ = tileSet.pImg(0, 0, tileSizeIdx)->pFbImg->height
 dim as grid_coord grid = type(wGrid_, hGrid_) 'grid larger than images
 
-'--- stash area ----------------------------------------------------------------
-
-dim as btn_type stashBtn
-stashBtn.define(SW - 10, SH - 10, IHA_RIGHT, IVA_BOTTOM, tileSet.pImg(0, 0, TILE_S), 4, &hff00ff)
-
 '--- other images --------------------------------------------------------------
 
 dim as image_buffer_type imgBufImages
@@ -115,6 +123,24 @@ pImgQu = imgBufImages.image(IMG_QUESTION).shrink
 pImgOk = imgBufImages.image(IMG_CHECK).shrink
 pImgNok = imgBufImages.image(IMG_CROSS).shrink
 
+'--- subs ----------------------------------------------------------------------
+
+sub zoomGrid(direction as long, byref tileSizeIdx as long, byref grid as grid_coord)
+	if direction > 0 then 'dir = +
+		if tileSizeIdx > TILE_L then 'zoom in
+			tileSizeIdx -= 1
+			grid.w shl= 1
+			grid.h shl= 1
+		end if
+	else 'dir = -
+		if tileSizeIdx < TILE_S then 'zoom out
+			tileSizeIdx += 1
+			grid.w shr= 1
+			grid.h shr= 1
+		end if
+	end if
+end sub
+
 '--- main ----------------------------------------------------------------------
 
 dim as score_type score
@@ -128,11 +154,19 @@ scrnPosOnMap = type((grid.w - SW) \ 2, (grid.h - SH) \ 2) 'center on tile 0,0
 const as double scrollSpeed = 1000 / 4 '250 pixels / second
 
 randomize timer '1234
-dim as stash_type stash
-dim as long stashSize = 50
-for i as integer = 0 to stashSize - 1
-	'stash.push(tileSet.getRandomId())
-	stash.push(tileSet.getRandomDistId())
+
+dim as long numstack = 1
+dim as card_stack stack(0 to 3)
+dim as long stackSize = 100
+for i as integer = 0 to stackSize - 1
+	'stack.push(tileSet.getRandomId())
+	stack(0).pushFirst(tileSet.getRandomDistId()) 'top = first
+next
+dim as btn_type stackBtn(0 to 3)
+for i as long = 0 to 3
+	dim as image_type ptr pImg = tileSet.pImg(0, 0, TILE_S)
+	dim as long w = pImg->pFbImg->width
+	stackBtn(i).define((SW - 10) - (w + 20) * i, SH - 10, IHA_RIGHT, IVA_BOTTOM, pImg, 4, &hff00ff)
 next
 
 dim as long match
@@ -158,7 +192,7 @@ while quitStr = ""
 	dim as long showPreview = 0
 
 	'determine what to diplay at mouse cursor grid position
-	if mouse.status = 0 and sTile.id >= 0 then 'selected tile selected from stash
+	if mouse.status = 0 and sTile.id >= 0 then 'selected tile selected from stack
 		if mTile.id <= 0 then 'no tile already at mouse grid pos
 			allowPlacement = 1 'maybe ok, check neighbours also...
 			showPreview = 1
@@ -184,46 +218,44 @@ while quitStr = ""
 		if sTile.id > 0 then
 			sTile.rotate(-1)
 		else
-			if tileSizeIdx > TILE_L then 'zoom in
-				tileSizeIdx -= 1
-				grid.w shl= 1
-				grid.h shl= 1
-			end if
+			zoomGrid(+1, tileSizeIdx, grid)
 		end if
 	case MOUSE_WHEEL_DOWN
 		if sTile.id > 0 then
 			sTile.rotate(+1)
 		else
-			if tileSizeIdx < TILE_S then 'zoom out
-				tileSizeIdx += 1
-				grid.w shr= 1
-				grid.h shr= 1
-			end if
+			zoomGrid(-1, tileSizeIdx, grid)
 		end if
 	case MOUSE_RB_PRESSED
 		mouseDrag = 1
 	case MOUSE_RB_RELEASED
 		mouseDrag = 0
 	case MOUSE_LB_PRESSED
-		if stashBtn.inside(mx, my) then
-			if sTile.id >= 0 then
-				'out back on stash
-				stash.push(sTile.id)
-				sTile.id = -1
-			else
-				'get from stash
-				if stash.size() > 0 then
-					dim as long id = stash.pop()
-					sTile = tileSet.tile(id)
+		dim as long onGrid = 1
+		for i as long = 0 to numStack - 1 
+			if stackBtn(i).inside(mx, my) then
+				onGrid = 0
+				if sTile.id >= 0 then
+					'out back on stack
+					stack(i).pushFirst(sTile.id) 'top = first
+					sTile.id = -1
+				else
+					'get from stack
+					if stack(i).size() > 0 then
+						dim as long id = stack(i).popFirst() 'top = first
+						sTile = tileSet.tile(id)
+					end if
 				end if
 			end if
-		else
+		next
+		if onGrid = 1 then
 			'place on grid/map
 			if sTile.id >= 0 then
 				if allowPlacement = 1 then
 					map.setTile(mouseGridPos, sTile) 'place tile
 					sTile.id = -1 'set selected tile invalid
 					map.checkPlacement(mouseGridPos.x, mouseGridPos.y)
+					map.checkAbbey(mouseGridPos.x, mouseGridPos.y, numStack)
 				end if
 			end if
 		end if
@@ -235,9 +267,9 @@ while quitStr = ""
 
 	dim as string key = inkey()
 	select case key
-		case chr(27): quitStr = "Abort by user"
-		case "-", "_" 'zoom out
-		case "=", "+" 'zoom out
+		case "q", "Q" : quitStr = "Abort by user"
+		case "-", "_" : zoomGrid(-1, tileSizeIdx, grid)
+		case "=", "+" : zoomGrid(+1, tileSizeIdx, grid)
 	end select
 
 	screenlock
@@ -252,14 +284,16 @@ while quitStr = ""
 			dim as tile_type tile = map.getTile(x, y)
 			if tile.Id >= 0 then
 				tileSet.pImg(tile.id, tile.rot, tileSizeIdx)->drawxym(scrnPos.x, scrnPos.y, IHA_LEFT, IVA_TOP)
-				'draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id) 'show tile id
+				draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id) 'show tile id
 			end if
 		next
 	next
-	'draw stash
-	stashBtn.pImg = iif(stash.size() <= 0, 0, tileSet.pImg(stash.top(), 0, TILE_S))
-	stashBtn.drawm()
-	draw string (stashBtn.x + 2 + 4, stashBtn.y + 4), str(stash.size()), &hffffff
+	'draw stack
+	for i as long = 0 to numstack - 1
+		stackBtn(i).pImg = iif(stack(i).size() <= 0, 0, tileSet.pImg(stack(i).getFirst(), 0, TILE_S)) 'top = first
+		stackBtn(i).drawm()
+		draw string (stackBtn(i).x + 2 + 4, stackBtn(i).y + 4), str(stack(i).size()), &hffffff
+	next
 	'highligt mouse position on grid
 	dim as int2d scrnPos = grid.getScrPos(mouseGridPos, scrnPosOnMap)
 	'draw selected image at mouse position if valid
@@ -285,7 +319,7 @@ while quitStr = ""
 	
 	draw string (10, 10), "<Q> to quit, Time: " & time, &hffff00
 	draw string (10, 40), "Use mouse to:", &hffff00
-	draw string (10, 55), "* pick a tile from stash, (left button)", &hffff00
+	draw string (10, 55), "* pick a tile from stack, (left button)", &hffff00
 	draw string (10, 70), "* rotate tile (if picked up) with wheel", &hffff00
 	draw string (10, 85), "* place on board if allowed (left button)", &hffff00
 	draw string (10, 100), "* zoom in/out, with no tile, with wheel", &hffff00
@@ -294,7 +328,7 @@ while quitStr = ""
 	draw string (10, 145), "Road score:  " & str(score.r) & " (" & str(score.br) & ")", &hffff00
 	draw string (10, 160), "Water score: " & str(score.w) & " (" & str(score.bw) & ")", &hffff00
 	draw string (10, 175), "City score:  " & str(score.c) & " (" & str(score.bc) & ")", &hffff00
-	draw string (10, 190), "Abby score:  " & str(score.a), &hffff00
+	draw string (10, 190), "Abbey score:  " & str(score.a), &hffff00
 	draw string (10, 205), "Neigb score:  " & str(score.n), &hffff00
 	draw string (10, 220), "Delta score: " & str(score.delta), &hffff00
 	draw string (10, 235), "Total score: " & str(score.total), &hffff00
@@ -305,12 +339,22 @@ while quitStr = ""
 	'locate 2,1 : print scrnPosOnMap.x, scrnPosOnMap.y
 	screenunlock
 
-	'update tiles and check if any left
+	'update tiles
 	dim as long tileGain = score.tilesGained()
 	for i as long = 1 to tileGain
-		stash.push(tileSet.getRandomId())
+		stack(0).pushLast(tileSet.getRandomId()) 'bottom = last
 	next
-	if stash.size() = 0 and sTile.id = -1 then quitStr = "No tiles left"
+	'check if any tiles left
+	if sTile.id = -1 then 'no tile being dragged
+		dim as boolean tilesLeft = false
+		for i as long = 0 to numStack - 1
+			if stack(i).size() > 0 then
+				tilesLeft = true
+				exit for
+			end if
+		next
+		if tilesLeft = false then quitStr = "No tiles left"
+	end if
 
 	sleep 1, 1
 	dim as double tNow = timer

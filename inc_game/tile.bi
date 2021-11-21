@@ -3,7 +3,7 @@ const as long PROP_G = 1 'grass
 const as long PROP_R = 2 'road
 const as long PROP_C = 3 'city
 const as long PROP_W = 4 'water
-const as long PROP_A = 5 'abby/citadel
+const as long PROP_A = 5 'abbey
 const as long PROP_B = 6 'blazon
 
 const as long PROP_UP = 0

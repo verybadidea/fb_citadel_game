@@ -10,10 +10,10 @@ end function
 '-------------------------------------------------------------------------------
 
 type score_type
-	dim as long r, c, w, a 'road, city, water, abby
+	dim as long r, c, w, a 'road, city, water, abbey
 	dim as long br, bc, bw 'bunus for road, city, water
 	dim as long t 'temporary score for cities 
-	dim as long n 'neigbour & abby score   
+	dim as long n 'neigbour & abbey score   
 	dim as long delta, total, old
 	declare sub clr()
 	declare sub updateTotal()

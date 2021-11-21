@@ -6,7 +6,7 @@ Properties:
 
 Scoring:
 - Each tile placed: Points per side. Preffer closing holes.
-- If tile is abby? 1 point extra (for self)
+- If tile is abbey? 1 point extra (for self)
 - Each 10 points increase: 1 tile (in addition to tiles for city/river/road completion)
 - Point for completed road, river, town
 - Extra point for city tiles with shields
@@ -14,9 +14,9 @@ Scoring:
 - 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 136, 153, 171, 190, 210, 231, 253, 276, 300, 325, 351, 378, 406, 435, 465, 496, 528, 561, 595, 630, 666...
 - Less points with number of tiles placed?
 
-Abby:
-- Multiple stashes by fully surrounded abby (8 tiles), next stash: 4 abby square, next: 9 abby square, next: +1 tile.
-- Place tile near abby (or abby itself), do fully surrounded check
+Abbey:
+- Multiple stashes by fully surrounded abbey (8 tiles), next stash: 4 abbey square, next: 9 abbey square, next: +1 tile.
+- Place tile near abbey (or abbey itself), do fully surrounded check
 
 Future additions:
 - Add game mode with limited space?

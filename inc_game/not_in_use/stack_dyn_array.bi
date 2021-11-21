@@ -2,6 +2,7 @@ type stash_type
 	dim as long cardId(any)
 	declare function size() as integer
 	declare function empty() as integer
+	'~ declare function insert(newId as long, position as long) as integer
 	declare function push(newId as long) as integer
 	declare function pop() as long
 	declare function top() as long
@@ -16,6 +17,17 @@ function stash_type.empty() as integer
 	erase(cardId)
 	return 0
 end function
+
+'~ function stash_type.insert(newId as long, position as long) as integer
+	'~ dim as integer ub = ubound(cardId)
+	'~ if position > ub then
+		'~ panic("stash_type.insert: position > ub")
+	'~ else
+	'~ end if
+	'~ redim preserve cardId(ub + 1)
+	'~ cardId(ub + 1) = newId
+	'~ return ub + 1
+'~ end function
 
 function stash_type.push(newId as long) as integer
 	dim as integer ub = ubound(cardId)
@@ -40,7 +52,7 @@ end function
 
 function stash_type.top() as long
 	dim as integer ub = ubound(cardId)
-	return cardId(ub)
+	return cardId(ub) '<-- bugged when empty?
 end function
 
 sub stash_type.printAll()

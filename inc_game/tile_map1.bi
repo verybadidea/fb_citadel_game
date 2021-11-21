@@ -42,12 +42,14 @@ type tile_map
 	dim as score_type ptr pScore
 	declare constructor(byref score as score_type)
 	declare sub clean()
-	declare function validTile(x as long, y as long) as boolean
+	declare function validPos(x as long, y as long) as boolean
 	declare function getTile(x as long, y as long) as tile_type
 	declare sub setTile(x as long, y as long, tile_ as tile_type)
 	declare function getTile overload(pos_ as int2d) as tile_type
 	declare sub setTile overload(pos_ as int2d, tile_ as tile_type)
-	declare function nbAbbyCheck(x as long, y as long) as long
+	declare function check4Neighbours(x as long, y as long) as long
+	declare function check8Neighbours(x as long, y as long) as long
+	declare function checkAbbey(x as long, y as long, byref  abbeyProgress as long) as long
 	declare function checkPlacement(x as long, y as long) as long
 	declare function tryWalk(x as long, y as long, area as long, prop as long) as long
 end type
@@ -61,7 +63,7 @@ sub tile_map.clean()
 	'''free...
 end sub
 
-function tile_map.validTile(x as long, y as long) as boolean
+function tile_map.validPos(x as long, y as long) as boolean
 	if (x < lbound(tile, 1)) or (x > ubound(tile, 1)) then return FALSE
 	if (y < lbound(tile, 2)) or (y > ubound(tile, 2)) then return FALSE
 	if tile(x, y).id <= 0 then return FALSE 'valid pos, no tile
@@ -98,15 +100,90 @@ sub tile_map.setTile(pos_ as int2d, tile_ as tile_type)
 	setTile(pos_.x, pos_.y, tile_)
 end sub
 
-'check 4 neighbours and abby
-function tile_map.nbAbbyCheck(x as long, y as long) as long
+'check 4 neighbours, extra points for abbey, return score
+function tile_map.check4Neighbours(x as long, y as long) as long
 	dim as long count = 0
-	if validTile(x + 1, y + 0) then count += 1
-	if validTile(x - 1, y + 0) then count += 1
-	if validTile(x + 0, y + 1) then count += 1
-	if validTile(x + 0, y - 1) then count += 1
+	if getTile(x + 1, y + 0).id > 0 then count += 1
+	if getTile(x - 1, y + 0).id > 0 then count += 1
+	if getTile(x + 0, y + 1).id > 0 then count += 1
+	if getTile(x + 0, y - 1).id > 0 then count += 1
 	if tile(x, y).prop(AREA_CT) = PROP_A then count += 1
 	return triangular(count - 1)
+end function
+
+'check 8 neighbours if valid and abbey cross or full
+'.....................
+'...TTT...TAT...AAA...
+'...TAT...AAA...AAA...
+'...TTT...TAT...AAA...
+'.....................
+function tile_map.check8Neighbours(x as long, y as long) as long
+	dim as boolean fullAbbey = true
+	dim as boolean crossAbbey = true
+	dim as long xc, yc
+	for yi as long = -1 to +1
+		yc = y + yi
+		for xi as long = -1 to +1
+			xc = x + xi
+			if xi = 0 and yi = 0 then continue for 'skip self
+			if getTile(xc, yc).id <= 0 then return 0
+			if abs(xi) + abs(yi) = 1 then
+				if tile(xc, yc).prop(AREA_CT) <> PROP_A then crossAbbey = false
+			end if
+			if tile(xc, yc).prop(AREA_CT) <> PROP_A then fullAbbey = false
+		next
+	next
+	if fullAbbey = true then return 3
+	if crossAbbey = true then return 2
+	return 1 'abbey surrounded by valid tiles
+end function
+
+'check abbey, after tile placement
+'..............
+'.....TT.......
+'.....AT.......
+'.....N........
+'..............
+'for 1st extra stack:
+'1 abbey fully surrounded by any tile
+'check all 8 neibours of placed tile:
+'for each neighbour:
+'  if abbey:
+'    count abbey neibours
+'    if count = 8 then add stack
+'..............
+'.....TT.......
+'....TAAT......
+'....TA.A......
+'....TTAT......
+'for 2nd extra stack:
+'1 abbey surrounded by any tile + abbey on left,right,north,south
+'for 3nd extra stack:
+'1 abbey surrounded by all abbeys/monastries/cloisters
+'only check if corresponding stack not yet obtained.
+'possible to gain the 3 extra stacks at once
+'does not result in extra point
+'when all stacks obtaind, nothing else happens 
+
+'prefect abbey check, abbeyProgress = numStack
+function tile_map.checkAbbey(x as long, y as long, byref abbeyProgress as long) as long
+	dim as long xc, yc
+	for yi as long = -1 to +1
+		yc = y + yi
+		for xi as long = -1 to +1
+			xc = x + xi
+			'also check self, could be abbey just placed
+			if getTile(xc, yc).id > 0 then
+				if tile(xc, yc).prop(AREA_CT) = PROP_A then 'is abbey
+					dim as long abbeyLevel = check8Neighbours(xc, yc)
+					if abbeyLevel + 1 > abbeyProgress then
+						abbeyProgress = abbeyLevel + 1
+					end if
+				end if
+			end if
+		next
+	next
+	return 0
 end function
 
 'check on new tile placement
@@ -120,7 +197,7 @@ function tile_map.checkPlacement(x as long, y as long) as long
 	next
 	if pScore->r < 0 then pScore->r = 0
 	if pScore->w < 0 then pScore->w = 0
-	pScore->n = nbAbbyCheck(x, y)
+	pScore->n = check4Neighbours(x, y)
 	pScore->updateTotal()
 	vList.clr()
 	return 0
@@ -128,7 +205,8 @@ end function
 
 function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as long
 	'check valid map position
-	if validTile(x, y) = FALSE then
+	'if validTile(x, y) = FALSE then
+	if getTile(x, y).id <= 0 then
 		 'This means end of road/city/water
 		 if prop = PROP_R then pScore->r = -1
 		 if prop = PROP_W then pScore->w = -1
