@@ -42,7 +42,7 @@ make images:
 - Zoom to 200%, screen shot
 - Gimp: Crop to 200x200, save as bmp
 - Filename: TRBLC.bmp for Top Right Bottom Left Center
-- Foxit reader, tile tiles: 230%
+- Foxit reader, river_II tiles: 230%
 
 More images:
  https://boardgamegeek.com/boardgame/822/carcassonne/images

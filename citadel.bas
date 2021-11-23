@@ -28,16 +28,16 @@
 'zoom in/out, also via keys -> function zoom(+/-)
 'multiple stackes
 'abbey check
-
-'TODO:
 'limit other stack to 1
 'change numStack to bitfield, make cross abby an exact match (no abbeys at diagonals)
+'add more tiles: water
+
+'TODO:
 'more simple point system, 1 point per tile
-'end roads at crossing? Check official rules of carcassonne
+'end roads at crossing
 'add registered key class + vairable key configuration
 'rotate card with space also
 'get tiles for score, display nicely: tile-, city-, road-, waterpoints + bonus
-'add more tiles: water
 'animate points, large & center, fade to topleft, nome new tiles to stack
 'animate scoring points with stars
 'allow map view at game over
@@ -155,9 +155,9 @@ const as double scrollSpeed = 1000 / 4 '250 pixels / second
 
 randomize timer '1234
 
-dim as long numstack = 1
+dim as long numStack = 1, stackMask = &b0001
 dim as card_stack stack(0 to 3)
-dim as long stackSize = 100
+dim as long stackSize = 30
 for i as integer = 0 to stackSize - 1
 	'stack.push(tileSet.getRandomId())
 	stack(0).pushFirst(tileSet.getRandomDistId()) 'top = first
@@ -237,8 +237,11 @@ while quitStr = ""
 				onGrid = 0
 				if sTile.id >= 0 then
 					'out back on stack
-					stack(i).pushFirst(sTile.id) 'top = first
-					sTile.id = -1
+					'limit extra stack to one tile
+					if i > 0 andalso stack(i).size = 0 then
+						stack(i).pushFirst(sTile.id) 'top = first
+						sTile.id = -1
+					end if
 				else
 					'get from stack
 					if stack(i).size() > 0 then
@@ -255,7 +258,13 @@ while quitStr = ""
 					map.setTile(mouseGridPos, sTile) 'place tile
 					sTile.id = -1 'set selected tile invalid
 					map.checkPlacement(mouseGridPos.x, mouseGridPos.y)
-					map.checkAbbey(mouseGridPos.x, mouseGridPos.y, numStack)
+					if map.checkAbbey(mouseGridPos.x, mouseGridPos.y, stackMask) then
+						numStack = &b0001
+						'count bits in mask
+						for i as long = 1 to 3
+							if bit(stackMask, i) then numStack += 1
+						next
+					end if
 				end if
 			end if
 		end if

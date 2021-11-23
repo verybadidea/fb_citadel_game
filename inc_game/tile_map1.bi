@@ -48,8 +48,10 @@ type tile_map
 	declare function getTile overload(pos_ as int2d) as tile_type
 	declare sub setTile overload(pos_ as int2d, tile_ as tile_type)
 	declare function check4Neighbours(x as long, y as long) as long
-	declare function check8Neighbours(x as long, y as long) as long
-	declare function checkAbbey(x as long, y as long, byref  abbeyProgress as long) as long
+	declare function checkAbbeyAny(x as long, y as long) as boolean
+	declare function checkAbbeyCross(x as long, y as long) as boolean
+	declare function checkAbbeyBlock(x as long, y as long) as boolean
+	declare function checkAbbey(x as long, y as long, byref abbeyMask as long) as boolean
 	declare function checkPlacement(x as long, y as long) as long
 	declare function tryWalk(x as long, y as long, area as long, prop as long) as long
 end type
@@ -111,62 +113,50 @@ function tile_map.check4Neighbours(x as long, y as long) as long
 	return triangular(count - 1)
 end function
 
-'check 8 neighbours if valid and abbey cross or full
 '.....................
 '...TTT...TAT...AAA...
 '...TAT...AAA...AAA...
 '...TTT...TAT...AAA...
 '.....................
-function tile_map.check8Neighbours(x as long, y as long) as long
-	dim as boolean fullAbbey = true
-	dim as boolean crossAbbey = true
-	dim as long xc, yc
+
+function tile_map.checkAbbeyAny(x as long, y as long) as boolean
 	for yi as long = -1 to +1
-		yc = y + yi
 		for xi as long = -1 to +1
-			xc = x + xi
-			if xi = 0 and yi = 0 then continue for 'skip self
-			if getTile(xc, yc).id <= 0 then return 0
-			if abs(xi) + abs(yi) = 1 then
-				if tile(xc, yc).prop(AREA_CT) <> PROP_A then crossAbbey = false
-			end if
-			if tile(xc, yc).prop(AREA_CT) <> PROP_A then fullAbbey = false
+			if getTile(x + xi, y + yi).id <= 0 then return false
 		next
 	next
-	if fullAbbey = true then return 3
-	if crossAbbey = true then return 2
-	return 1 'abbey surrounded by valid tiles
+	return true 'abbey surrounded by valid tiles
 end function
 
-'check abbey, after tile placement
-'..............
-'.....TT.......
-'.....AT.......
-'.....N........
-'..............
-'for 1st extra stack:
-'1 abbey fully surrounded by any tile
-'check all 8 neibours of placed tile:
-'for each neighbour:
-'  if abbey:
-'    count abbey neibours
-'    if count = 8 then add stack
-'..............
-'.....TT.......
-'....TAAT......
-'....TA.A......
-'....TTAT......
-'for 2nd extra stack:
-'1 abbey surrounded by any tile + abbey on left,right,north,south
-'for 3nd extra stack:
-'1 abbey surrounded by all abbeys/monastries/cloisters
-'only check if corresponding stack not yet obtained.
-'possible to gain the 3 extra stacks at once
-'does not result in extra point
-'when all stacks obtaind, nothing else happens 
+function tile_map.checkAbbeyCross(x as long, y as long) as boolean
+	for yi as long = -1 to +1
+		for xi as long = -1 to +1
+			if getTile(x + xi, y + yi).id <= 0 then return false
+			if (abs(xi) + abs(yi)) > 1 then
+				'must not be abbey
+				if tile(x + xi, y + yi).prop(AREA_CT) = PROP_A then return false
+			else
+				'has to be abbey
+				if tile(x + xi, y + yi).prop(AREA_CT) <> PROP_A then return false
+			end if
+		next
+	next
+	return true 'abbey surrounded by valid tiles & 4 abbeys
+end function
 
-'prefect abbey check, abbeyProgress = numStack
-function tile_map.checkAbbey(x as long, y as long, byref abbeyProgress as long) as long
+function tile_map.checkAbbeyBlock(x as long, y as long) as boolean
+	for yi as long = -1 to +1
+		for xi as long = -1 to +1
+			if getTile(x + xi, y + yi).id <= 0 then return false
+			if tile(x + xi, y + yi).prop(AREA_CT) <> PROP_A then return false
+		next
+	next
+	return true 'abbey surrounded by 8 abbyes
+end function
+
+'prefect abbey check (neibours: any, abbey cross, abbey full)
+function tile_map.checkAbbey(x as long, y as long, byref abbeyMask as long) as boolean
+	dim as boolean retVal = false
 	dim as long xc, yc
 	for yi as long = -1 to +1
 		yc = y + yi
@@ -175,15 +165,23 @@ function tile_map.checkAbbey(x as long, y as long, byref abbeyProgress as long) 
 			'also check self, could be abbey just placed
 			if getTile(xc, yc).id > 0 then
 				if tile(xc, yc).prop(AREA_CT) = PROP_A then 'is abbey
-					dim as long abbeyLevel = check8Neighbours(xc, yc)
-					if abbeyLevel + 1 > abbeyProgress then
-						abbeyProgress = abbeyLevel + 1
+					if (abbeyMask and &b0010) = 0 then
+						if checkAbbeyAny(xc, yc) then abbeyMask or= &b0010
+						retVal = true 'bitmask changed
+					end if
+					if (abbeyMask and &b0100) = 0 then
+						if checkAbbeyCross(xc, yc) then abbeyMask or= &b0100
+						retVal = true 'bitmask changed
+					end if
+					if (abbeyMask and &b1000) = 0 then
+						if checkAbbeyBlock(xc, yc) then abbeyMask or= &b1000
+						retVal = true 'bitmask changed
 					end if
 				end if
 			end if
 		next
 	next
-	return 0
+	return retVal
 end function
 
 'check on new tile placement
