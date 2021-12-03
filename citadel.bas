@@ -31,11 +31,16 @@
 'limit other stack to 1
 'change numStack to bitfield, make cross abby an exact match (no abbeys at diagonals)
 'add more tiles: water
-
-'TODO:
 'more simple point system, 1 point per tile
 'end roads at crossing
+'Points: -1 for roads & -2 for cities, +1 for blazon
+
+'TODO:
+'Undo option (single)?
+'Add destruction tile
+'add full grass tile?
 'add registered key class + vairable key configuration
+'scroll map with keys
 'rotate card with space also
 'get tiles for score, display nicely: tile-, city-, road-, waterpoints + bonus
 'animate points, large & center, fade to topleft, nome new tiles to stack
@@ -59,6 +64,7 @@
 '- each with different start + random fixed seed
 '- also the basic game with random seed
 'different images for incomplete cities, raods, etc. See: https://www.youtube.com/watch?v=fTj2159ShoY
+'owb tile grapics
 
 'LATERs:
 'tutorial/help with screenshots and page numbers
@@ -68,6 +74,7 @@
 
 'DON'T:
 'zoom in/out ui-buttons + q - (q = magnifier)
+'more road end tiles?
 
 '-------------------------------------------------------------------------------
 
@@ -86,6 +93,7 @@
 #include "inc_game/grid_coord.bi"
 #include "inc_game/tile.bi"
 #include "inc_game/score.bi"
+#include "inc_game/simple_list.bi"
 #include "inc_game/visited_list.bi"
 #include "inc_game/tile_map1.bi"
 #include "inc_game/tile_collection.bi"
@@ -145,7 +153,7 @@ end sub
 
 dim as score_type score
 
-dim as tile_map map = tile_map(score)
+dim as tile_map map
 map.setTile(0, 0, tileSet.tile(1)) 'set first tile 1 at 0,0
 
 dim as int2d scrnPosOnMap
@@ -157,10 +165,11 @@ randomize timer '1234
 
 dim as long numStack = 1, stackMask = &b0001
 dim as card_stack stack(0 to 3)
-dim as long stackSize = 30
+dim as long stackSize = 12
 for i as integer = 0 to stackSize - 1
 	'stack.push(tileSet.getRandomId())
 	stack(0).pushFirst(tileSet.getRandomDistId()) 'top = first
+	'stack(0).pushFirst(15)
 next
 dim as btn_type stackBtn(0 to 3)
 for i as long = 0 to 3
@@ -191,7 +200,7 @@ while quitStr = ""
 	dim as long allowPlacement = 0
 	dim as long showPreview = 0
 
-	'determine what to diplay at mouse cursor grid position
+	'determine what to display at mouse cursor grid position
 	if mouse.status = 0 and sTile.id >= 0 then 'selected tile selected from stack
 		if mTile.id <= 0 then 'no tile already at mouse grid pos
 			allowPlacement = 1 'maybe ok, check neighbours also...
@@ -257,7 +266,7 @@ while quitStr = ""
 				if allowPlacement = 1 then
 					map.setTile(mouseGridPos, sTile) 'place tile
 					sTile.id = -1 'set selected tile invalid
-					map.checkPlacement(mouseGridPos.x, mouseGridPos.y)
+					map.checkPlacement(mouseGridPos.x, mouseGridPos.y, score)
 					if map.checkAbbey(mouseGridPos.x, mouseGridPos.y, stackMask) then
 						numStack = &b0001
 						'count bits in mask
@@ -293,7 +302,8 @@ while quitStr = ""
 			dim as tile_type tile = map.getTile(x, y)
 			if tile.Id >= 0 then
 				tileSet.pImg(tile.id, tile.rot, tileSizeIdx)->drawxym(scrnPos.x, scrnPos.y, IHA_LEFT, IVA_TOP)
-				draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id) 'show tile id
+				'draw string (scrnPos.x + 4, scrnPos.y + 2), str(tile.id) 'show tile id
+				'draw string (scrnPos.x + 4, scrnPos.y + 2 + 16), bin(tile.link, 6) 'show tile link info
 			end if
 		next
 	next
@@ -327,16 +337,16 @@ while quitStr = ""
 	end if
 	
 	draw string (10, 10), "<Q> to quit, Time: " & time, &hffff00
-	draw string (10, 40), "Use mouse to:", &hffff00
-	draw string (10, 55), "* pick a tile from stack, (left button)", &hffff00
-	draw string (10, 70), "* rotate tile (if picked up) with wheel", &hffff00
-	draw string (10, 85), "* place on board if allowed (left button)", &hffff00
-	draw string (10, 100), "* zoom in/out, with no tile, with wheel", &hffff00
-	draw string (10, 115), "* drag view with right button", &hffff00
+	'draw string (10, 40), "Use mouse to:", &hffff00
+	'draw string (10, 55), "* pick a tile from stack, (left button)", &hffff00
+	'draw string (10, 70), "* rotate tile (if picked up) with wheel", &hffff00
+	'draw string (10, 85), "* place on board if allowed (left button)", &hffff00
+	'draw string (10, 100), "* zoom in/out, with no tile, with wheel", &hffff00
+	'draw string (10, 115), "* drag view with right button", &hffff00
 
-	draw string (10, 145), "Road score:  " & str(score.r) & " (" & str(score.br) & ")", &hffff00
-	draw string (10, 160), "Water score: " & str(score.w) & " (" & str(score.bw) & ")", &hffff00
-	draw string (10, 175), "City score:  " & str(score.c) & " (" & str(score.bc) & ")", &hffff00
+	draw string (10, 145), "Road score:  " & str(score.r), &hffff00
+	draw string (10, 160), "Water score: " & str(score.w), &hffff00
+	draw string (10, 175), "City score:  " & str(score.c), &hffff00
 	draw string (10, 190), "Abbey score:  " & str(score.a), &hffff00
 	draw string (10, 205), "Neigb score:  " & str(score.n), &hffff00
 	draw string (10, 220), "Delta score: " & str(score.delta), &hffff00
@@ -351,7 +361,8 @@ while quitStr = ""
 	'update tiles
 	dim as long tileGain = score.tilesGained()
 	for i as long = 1 to tileGain
-		stack(0).pushLast(tileSet.getRandomId()) 'bottom = last
+		'stack(0).pushLast(tileSet.getRandomId()) 'bottom = last
+		stack(0).pushLast(tileSet.getRandomDistId())
 	next
 	'check if any tiles left
 	if sTile.id = -1 then 'no tile being dragged

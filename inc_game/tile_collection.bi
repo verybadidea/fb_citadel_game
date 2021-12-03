@@ -15,6 +15,8 @@ type tile_collection
 	declare function getRandomDistId() as long
 end type
 
+'image filename format: nn_tldrc_ll_o.bmp
+'                       12345678901234
 function tile_collection.load(imagePath as string) as long
 	numTiles = imgBuf.loadDir(imagePath)
 	if numTiles <= 0 then return -1
@@ -45,10 +47,11 @@ function tile_collection.load(imagePath as string) as long
 		tile(iTile).id = iTile
 		dim as string shortName = getFileName(imgBuf.imageFileName(iTile))
 		if mid(shortName, 3, 1) <> "_" then panic("tile_collection.load, invalid file name")
-		if mid(shortName, 10, 1) <> "." then panic("tile_collection.load, invalid file name")
-		dim as string propStr = mid(shortName, 4, 6)
+		if mid(shortName, 9, 1) <> "_" then panic("tile_collection.load, invalid file name")
+		if mid(shortName, 12, 1) <> "_" then panic("tile_collection.load, invalid file name")
+		if mid(shortName, 14, 1) <> "." then panic("tile_collection.load, invalid file name")
 		for iProp as long = 0 to 4
-			select case mid(propStr, iProp + 1, 1)
+			select case mid(shortName, iProp + 4, 1)
 			case "X": tile(iTile).prop(iProp) = PROP_X
 			case "G": tile(iTile).prop(iProp) = PROP_G
 			case "R": tile(iTile).prop(iProp) = PROP_R
@@ -59,7 +62,8 @@ function tile_collection.load(imagePath as string) as long
 			end select
 			'print tile(iTile).prop(iProp) 'DEBUG
 		next
-		occurance(iTile) = val(mid(propStr, 6, 1))
+		tile(iTile).link = val("&O" & mid(shortName, 10, 2))
+		occurance(iTile) = val(mid(shortName, 13, 1))
 		fullSetCount += occurance(iTile)
 	next
 	'fill occurance array

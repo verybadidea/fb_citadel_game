@@ -39,27 +39,22 @@ type tile_map
 	dim as int2d nbDeltaPos(0 to 3) = {int2d(0, -1), int2d(+1, 0), int2d(0, +1), int2d(-1, 0)}
 	dim as tile_type tile(any, any) 'x, y
 	dim as visited_list vList
-	dim as score_type ptr pScore
-	declare constructor(byref score as score_type)
+	dim as simple_list sList
+	dim as boolean walkSuccess
 	declare sub clean()
 	declare function validPos(x as long, y as long) as boolean
 	declare function getTile(x as long, y as long) as tile_type
 	declare sub setTile(x as long, y as long, tile_ as tile_type)
 	declare function getTile overload(pos_ as int2d) as tile_type
 	declare sub setTile overload(pos_ as int2d, tile_ as tile_type)
-	declare function check4Neighbours(x as long, y as long) as long
 	declare function checkAbbeyAny(x as long, y as long) as boolean
 	declare function checkAbbeyCross(x as long, y as long) as boolean
 	declare function checkAbbeyBlock(x as long, y as long) as boolean
 	declare function checkAbbey(x as long, y as long, byref abbeyMask as long) as boolean
-	declare function checkPlacement(x as long, y as long) as long
-	declare function tryWalk(x as long, y as long, area as long, prop as long) as long
+	declare function check4Neighbours(x as long, y as long) as boolean
+	declare function checkPlacement(x as long, y as long, byref score as score_type) as long
+	declare function tryWalk(x as long, y as long, area as long, prop as long) as boolean
 end type
-
-constructor tile_map(byref score as score_type)
-	pScore = @score
-	if pScore = 0 then panic("tile_map: pScore = 0")
-end constructor
 
 sub tile_map.clean()
 	'''free...
@@ -101,17 +96,6 @@ end function
 sub tile_map.setTile(pos_ as int2d, tile_ as tile_type)
 	setTile(pos_.x, pos_.y, tile_)
 end sub
-
-'check 4 neighbours, extra points for abbey, return score
-function tile_map.check4Neighbours(x as long, y as long) as long
-	dim as long count = 0
-	if getTile(x + 1, y + 0).id > 0 then count += 1
-	if getTile(x - 1, y + 0).id > 0 then count += 1
-	if getTile(x + 0, y + 1).id > 0 then count += 1
-	if getTile(x + 0, y - 1).id > 0 then count += 1
-	if tile(x, y).prop(AREA_CT) = PROP_A then count += 1
-	return triangular(count - 1)
-end function
 
 '.....................
 '...TTT...TAT...AAA...
@@ -184,99 +168,84 @@ function tile_map.checkAbbey(x as long, y as long, byref abbeyMask as long) as b
 	return retVal
 end function
 
+'check 4 neighbours present / perfect tile
+function tile_map.check4Neighbours(x as long, y as long) as boolean
+	if getTile(x + 1, y + 0).id <= 0 then return false
+	if getTile(x - 1, y + 0).id <= 0 then return false
+	if getTile(x + 0, y + 1).id <= 0 then return false
+	if getTile(x + 0, y - 1).id <= 0 then return false
+	return true
+end function
+
 'check on new tile placement
-function tile_map.checkPlacement(x as long, y as long) as long
-	pScore->clr()
-	for iArea as long = 0 to 3
-		dim as long prop = tile(x, y).prop(iArea)
-		pScore->t = 0
-		tryWalk(x, y, iArea, prop)
-		if pScore->t > 0 then pScore->c += pScore->t
-	next
-	if pScore->r < 0 then pScore->r = 0
-	if pScore->w < 0 then pScore->w = 0
-	pScore->n = check4Neighbours(x, y)
-	pScore->updateTotal()
+function tile_map.checkPlacement(x as long, y as long, byref score as score_type) as long
+	score.clr()
 	vList.clr()
+	for iArea as long = 0 to 3
+		sList.clr()
+		dim as long prop = tile(x, y).prop(iArea)
+		walkSuccess = true
+		tryWalk(x, y, iArea, prop)
+		if walkSuccess then
+			select case prop
+				case PROP_R
+					if sList.size() >= 1 then score.r += (sList.size() - 1)
+				case PROP_W
+					if sList.size() >= 0 then score.w += (sList.size())
+				case PROP_C
+					if sList.size() >= 2 then score.c += (sList.size() - 2)
+					for iTile as long = 0 to slist.size() - 1
+						dim as simple_tile sTile = sList.sTile(iTile)
+						if tile(sTile.x, sTile.y).prop(AREA_CT) = PROP_B then
+							score.c += 1
+						end if
+					next
+				case else
+					'nothing
+			end select
+		end if
+	next
+	score.n = iif(check4Neighbours(x, y), 1, 0)
+	score.updateTotal()
 	return 0
 end function
 
-function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as long
+function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as boolean 'RETURN HAS NO PURPOSE!
 	'check valid map position
-	'if validTile(x, y) = FALSE then
 	if getTile(x, y).id <= 0 then
-		 'This means end of road/city/water
-		 if prop = PROP_R then pScore->r = -1
-		 if prop = PROP_W then pScore->w = -1
-		 if prop = PROP_C then pScore->t = -1 'cannot be blazon on the edge
-		 'Bug: A tile with 2 city parts always results in -1 !!!
-		return -1
+		walkSuccess = false
+		return false 'incomplete construction
 	end if
 	'check correct type
-	if tile(x, y).prop(area) <> prop then return -1
+	if tile(x, y).prop(area) <> prop then panic("tryWalk") 'obsolete check?
 	'check not yet visited
-	dim as long tileIdx = vList.getTile(x, y)
-	if vList.vTile(tileIdx).area(area) = 1 then return -1
-	if prop = PROP_R or prop = PROP_W then 'road or water
-		'loop all adjacent tiles (and self) and try neighbours
-		for iArea as long = 0 to 3
-			if tile(x, y).prop(iArea) = prop then
-				if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
-					vList.vTile(tileIdx).area(iArea) = 1 'set visited
-					if prop = PROP_R then
-						if pScore->r >= 0 then pScore->r += 1
-					elseif prop = PROP_W then
-						if pScore->w >= 0 then pScore->w += 1
-					end if
-					'check neighbour tile
-					select case iArea
-						case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
-						case AREA_RI : tryWalk(x + 1, y, AREA_LE, prop)
-						case AREA_DN : tryWalk(x, y + 1, AREA_UP, prop)
-						case AREA_LE : tryWalk(x - 1, y, AREA_RI, prop)
-					end select
-					'dim as long nbArea = (iArea + 2) mod 4
-					'dim as int2d newPos = int2d(x, y) + nbDeltaPos(iArea)
-					'tryWalk(newPos.x, newPos.y, nbArea, prop)
-				end if
+	dim as long tileIdx = vList.getTile(x, y) 'find tile id
+	if vList.vTile(tileIdx).area(area) = 1 then return false 'already visited
+
+	sList.addTileIfNew(x, y) 'add to simple list for score count
+
+	'loop edge tiles if linked (and self) and try neighbours
+	'double check if same type else panic
+	for iArea as long = 0 to 3
+		'check if areas linked or self
+		if (linkBitmask(area, iArea) and tile(x, y).link) or (iArea = area) then
+			if tile(x, y).prop(iArea) <> prop then
+				print tile(x, y).id, area, iArea, prop, tile(x, y).prop(iArea), bin(tile(x, y).link), bin(linkBitmask(area, iArea))
+				panic("tryWalk: Prop not equal, but linked")
 			end if
-		next
-	elseif prop = PROP_C then 'city
-		'check if center is city (note: only center can be B for blazon, not edges)
-		dim as ulong center = tile(x, y).prop(AREA_CT)
-		if center = PROP_C or center = PROP_B then
-			vList.vTile(tileIdx).area(AREA_CT) = 1 'set visited (although not needed)
-			if pScore->t >= 0 then
-				pScore->t += iif(center = PROP_B, 2, 1) 'bonus point for blazon tile
+			if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
+				vList.vTile(tileIdx).area(iArea) = 1 'set visited
+				'check neighbour tile
+				select case iArea
+					case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop) 'down area of upper tile
+					case AREA_RI : tryWalk(x + 1, y, AREA_LE, prop)
+					case AREA_DN : tryWalk(x, y + 1, AREA_UP, prop)
+					case AREA_LE : tryWalk(x - 1, y, AREA_RI, prop)
+				end select
 			end if
-			'loop edge tiles (and self) and try neighbours
-			for iArea as long = 0 to 3
-				if tile(x, y).prop(iArea) = prop then
-					if vList.vTile(tileIdx).area(iArea) = 0 then 'not visited yet?
-						vList.vTile(tileIdx).area(iArea) = 1 'set visited
-						if pScore->t >= 0 then pScore->t += 1
-						'check neighbour tile
-						select case iArea
-							case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
-							case AREA_RI : tryWalk(x + 1, y, AREA_LE, prop)
-							case AREA_DN : tryWalk(x, y + 1, AREA_UP, prop)
-							case AREA_LE : tryWalk(x - 1, y, AREA_RI, prop)
-						end select
-					end if
-				end if
-			next
-		else 'city end on this edge, 1 point only
-			vList.vTile(tileIdx).area(area) = 1 'set visited
-			if pScore->t >= 0 then pScore->t += 1
-			select case area
-				case AREA_UP : tryWalk(x, y - 1, AREA_DN, prop)
-				case AREA_RI : tryWalk(x + 1, y, AREA_LE, prop)
-				case AREA_DN : tryWalk(x, y + 1, AREA_UP, prop)
-				case AREA_LE : tryWalk(x - 1, y, AREA_RI, prop)
-			end select
 		end if
-	end if
-	return 0
+	next
+	return true
 end function
 
 '--- test ----------------------------------------------------------------------
