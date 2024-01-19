@@ -206,6 +206,7 @@ function image_type.shrinkTo(byref newImg as image_type) as long
 	return 0
 end function
 
+'create image half the size
 function image_type.shrink() as image_type ptr
 	dim as image_type ptr newImg = new image_type
 	this.shrinkTo(*newImg) 'dereference, byref passing

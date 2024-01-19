@@ -38,7 +38,7 @@ const as long LINK_LR = &o40
 	((value and &hCF) or ((value and &h10) shl 1) or ((value and &h20) shr 1)) 'hex!
 
 'basic tile poperties for map
-type tile_type
+type tile_type field = 4 '--> 16 bytes
 	dim as long id
 	dim as long rot 'rotation: 0...3
 	dim as ubyte prop(0 to 4) 'top, right, bottom, left, center/bonus

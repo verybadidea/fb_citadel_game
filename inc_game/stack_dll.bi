@@ -9,7 +9,7 @@ type card_stack
 	dim as card_node ptr pFirst, pLast 'bottom & top
 	dim as long numCards
 	declare function size() as integer
-	declare function empty() as integer
+	declare function reset_() as integer
 	declare function pushFirst(newId as long) as integer
 	declare function pushLast(newId as long) as integer
 	declare function popFirst() as long
@@ -24,8 +24,11 @@ function card_stack.size() as integer
 	'~ return ubound(cardId) + 1
 end function
 
-function card_stack.empty() as integer
-	'~ erase(cardId)
+function card_stack.reset_() as integer
+	'erase(cardId)
+	while numCards > 0
+		popFirst()
+	wend
 	return 0
 end function
 
@@ -156,3 +159,70 @@ end sub
 '~ stash.printAll(0)
 '~ print
 '~ stash.printAll(-1)
+
+'-------------------------------------------------------------------------------
+
+type multi_stack
+	dim as long stackMask = &b0001 'numStack = 1, 
+	dim as card_stack stack(0 to 3)
+	declare sub reset_()
+	declare sub addRndCards(iStack as long, numCards as long, tileSet as tile_collection)
+	declare function numStack() as long
+	declare function saveToDisk(fileNum as integer) as long
+	declare function loadFromDisk(fileNum as integer) as long
+end type
+
+sub multi_stack.reset_()
+	stackMask = &b0001
+	for i as long = 0 to ubound(stack)
+		stack(i).reset_()
+	next
+end sub
+
+sub multi_stack.addRndCards(iStack as long, numCards as long, tileSet as tile_collection)
+	for i as integer = 0 to numCards - 1
+		'stack.push(tileSet.getRandomId())
+		stack(iStack).pushFirst(tileSet.getRandomDistId()) 'top = first
+		'stack(0).pushFirst(15)
+	next
+end sub
+
+function multi_stack.numStack() as long
+	dim as long count = &b0001 'first one always there
+	for i as long = 1 to ubound(stack)
+		if bit(stackMask, i) then count += 1
+	next
+	return count
+end function
+
+function multi_stack.saveToDisk(fileNum as integer) as long
+	put #fileNum, , stackMask
+	for iStack as long = 0 to ubound(stack)
+		put #fileNum, , stack(iStack).numCards
+		'loop cards, do not pop
+		dim as long count = 0
+		dim as card_node ptr pCard = stack(iStack).pFirst
+		while pCard <> 0
+			put #fileNum, , pCard->id
+			count += 1
+			pCard = pCard->pNext
+		wend 
+		'logger.add(str(count) & "," & str(stack(iStack).numCards))
+	next
+	return 0
+end function
+
+function multi_stack.loadFromDisk(fileNum as integer) as long
+	get #fileNum, , stackMask
+	for iStack as long = 0 to ubound(stack)
+		stack(iStack).reset_()
+		dim as long numCards, id
+		get #fileNum, , numCards
+		for iCard as long = 0 to numCards - 1
+			get #fileNum, , id
+			stack(iStack).pushLast(id)
+		next
+		'logger.add(str(numCards) & "," & str(stack(iStack).numCards)) & "," & str(stack(iStack).size())
+	next
+	return 0
+end function

@@ -14,6 +14,7 @@ type score_type
 	declare sub clr()
 	declare sub updateTotal()
 	declare function tilesGained() as long
+	declare sub reset_()
 end type
 
 sub score_type.clr()
@@ -32,3 +33,10 @@ function score_type.tilesGained() as long
 	old = total
 	return retVal
 end function
+
+sub score_type.reset_()
+	clr()
+	delta = 0
+	total = 0
+	old = 0
+end sub

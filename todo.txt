@@ -1,0 +1,110 @@
+=== TODO ===
+
+global:
+- score for highscore
+- save/load highscores
+- add score to save/load
+- add tile stacks to save/load
+- add seed to save game
+- font: brightness & color
+- move savegame to 'savegame' folder
+Stck stack background: +10 = green, +3 = yellow, else red
+longs --> integer?
+fix zoom & tileIdx stuff
+show menu within game play
+- escape & game over trigger menu, no show high score yes/yes first
+- possible to press escape again to view last game
+- initialyse with a dummy game (with 0 tiles left)
+options menu:
+- restart
+- load and save game
+- screen resolution & full screen option
+- high score list
+- how to play
+- set key configuration
+- background for intro
+Score: 42 + 3 (city) + 2 (road) + 1 (perfect) --> 48 fade out? scroll up?
+Menu navigation with mouse
+'Add destruction tile
+'add full grass tile?
+'move stack init to subroutine/class?
+'display nicely: tile-, city-, road-, waterpoints + bonus
+'animate points, large & center, fade to topleft, nome new tiles to stack
+'animate scoring points with stars
+'allow map view at game over
+'animate getting tiles for points scored
+'map draw_map/grid function
+'change map offset on zoom in/out, center on mouse pos
+'move grid-view with mouse & keys
+'switch to tile_map2.bi (list of rows)
+'make stack empty image
+'sounds
+'difficulty setting (each own high score)
+'list of challenges:
+'- each with different start + random fixed seed
+'- also the basic game with random seed
+'- build a river completed of >= 20 tiles/points
+'- connect 2 cities
+'- surround city with water + bridge
+'- grass in city
+'- abbey in city
+'different images for incomplete cities, raods, etc. See: https://www.youtube.com/watch?v=fTj2159ShoY
+'own tile grapics
+'Undo option (single)?
+'tutorial/help with screenshots and page numbers
+'multiple stack
+'sound & music
+
+'DON'T:
+'zoom in/out ui-buttons + q - (q = magnifier)
+'more road end tiles?
+'right mouse button / escape: dragging tile back to stack movement
+
+'DONE:
+'allow move back tile to stack 0
+'draw stack, with number of cards indication
+'pick card from stack, rotate with wheel
+'place card on grid
+'set rotation on map
+'read tile properties from filename
+'make lookup table tileId <-> properties
+'show invalid neighbours indication
+'check valid position (neighbours)
+'separate check valid pos & drawing
+'do not allow placement when ...
+'use bitfield or union for match neighours
+'remove scroll buttons, move map by mouse drag
+'zoom with mouse
+'show semi transparent selected/dragged tile on map
+'watermark images
+'tile occurance / propability
+'restructure tile_type, tile_prop, tile_collection class
+'add re-sizeble and re-usable array for visited tiles
+'set map tile properties on placement -> Change neighbour check
+'make add to rnd_tile function, using propability
+'no score for imcomplete road/city/water
+'detect city/road/water completion
+'score display
+'change x,y / row,col in tile_map 
+'points for tiles placed with neighours > 2 + 1 for abbey (1,3,6,10,15)
+'linked list for stack. Add to bottom added.
+'zoom in/out, also via keys -> function zoom(+/-)
+'multiple stackes
+'abbey check
+'limit other stack to 1
+'change numStack to bitfield, make cross abby an exact match (no abbeys at diagonals)
+'add more tiles: water
+'more simple point system, 1 point per tile
+'end roads at crossing
+'Points: -1 for roads & -2 for cities, +1 for blazon
+'problem tile: 2 disconnected roads
+'scroll map with keys
+'rotate card with space also
+'limit scroll range
+'add registered key class
+'add font library, more classic font
+- score.reset
+- map.reset
+- move map outside game_loop
+- map for load/save game (slot 1..5 with time)
+

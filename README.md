@@ -38,10 +38,12 @@ Like this:
 ## Mouse
 * [left mouse button] 'pick a tile from stack' or 'place on board if allowed'
 * [mouse wheel] 'zoom in/out' or 'rotate tile if picked from stack'
-* [right mouse button] + [mouse mouse] 'drag view' 
+* [right mouse button] + [mouse mouse] 'drag board view' 
 
 ## Keyboard
-* [Q] 'quit'
+* [Escape] 'quit'
+* [Arrows] 'scroll board view'
+* [Space] 'rotate current tile'
 * [+/-] 'zoom in/out'
 
 ![Game preview 1](preview/Citadel_2021-09-29.png)

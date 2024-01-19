@@ -41,7 +41,8 @@ type tile_map
 	dim as visited_list vList
 	dim as simple_list sList
 	dim as boolean walkSuccess
-	declare sub clean()
+	declare sub reset_()
+	declare sub prepare(tileSet as tile_collection, mapId as long)
 	declare function validPos(x as long, y as long) as boolean
 	declare function getTile(x as long, y as long) as tile_type
 	declare sub setTile(x as long, y as long, tile_ as tile_type)
@@ -54,10 +55,28 @@ type tile_map
 	declare function check4Neighbours(x as long, y as long) as boolean
 	declare function checkPlacement(x as long, y as long, byref score as score_type) as long
 	declare function tryWalk(x as long, y as long, area as long, prop as long) as boolean
+	declare function xMin() as long
+	declare function xMax() as long
+	declare function yMin() as long
+	declare function yMax() as long
+	declare function size() as long 'x*y
+	'declare function saveToDisk(fileName as string) as long
+	'declare function loadFromDisk(fileName as string) as long
+	declare function saveToDisk(fileNum as integer) as long
+	declare function loadFromDisk(fileNum as integer) as long
 end type
 
-sub tile_map.clean()
+sub tile_map.reset_()
 	'''free...
+	erase(tile)
+end sub
+
+sub tile_map.prepare(tileSet as tile_collection, mapId as long) 'id = 0 clean only
+	reset_()
+	select case mapId
+		case 1
+			setTile(0, 0, tileSet.tile(1)) 'set first tile 1 at 0,0
+	end select
 end sub
 
 function tile_map.validPos(x as long, y as long) as boolean
@@ -246,6 +265,104 @@ function tile_map.tryWalk(x as long, y as long, area as long, prop as long) as b
 		end if
 	next
 	return true
+end function
+
+function tile_map.xMin() as long
+	return lbound(tile, 1)
+end function
+
+function tile_map.xMax() as long
+	return ubound(tile, 1)
+end function
+
+function tile_map.yMin() as long
+	return lbound(tile, 2)
+end function
+
+function tile_map.yMax() as long
+	return ubound(tile, 2)
+end function
+
+function tile_map.size() as long 'x*y
+	return (xMax() - xMin() + 1) * (yMax() - yMin() + 1)
+end function
+	
+'~ function tile_map.saveToDisk(fileName as string) as long
+	'~ dim as integer fileNum = freefile()
+	'~ if open(fileName, for binary, access write, as fileNum) = 0 then
+		'~ 'write map dimensions
+		'~ put #fileNum, , xMin()
+		'~ put #fileNum, , xMax()
+		'~ put #fileNum, , yMin()
+		'~ put #fileNum, , yMax()
+		'~ 'write tile data
+		'~ for x as integer = xMin() to xMax
+			'~ for y as integer = yMin() to yMax
+				'~ put #fileNum, , tile(x, y)
+			'~ next 
+		'~ next
+		'~ close #fileNum
+	'~ else
+		'~ panic("tile_map.saveToDisk()")
+	'~ end if
+	'~ return 0
+'~ end function
+
+'~ function tile_map.loadFromDisk(fileName as string) as long
+	'~ reset_() 'erase current map in memory
+	'~ dim as integer fileNum = freefile()
+	'~ if open(fileName, for binary, access read, as fileNum) = 0 then
+		'~ 'read map dimensions
+		'~ dim as long lbx, ubx, lby, uby 'lower/upper boundary x/y
+		'~ get #fileNum, , lbx
+		'~ get #fileNum, , ubx
+		'~ get #fileNum, , lby
+		'~ get #fileNum, , uby
+		'~ redimpreserve(tile, lbx to ubx, lby to uby)
+		'~ 'read tile data
+		'~ for x as integer = xMin() to xMax
+			'~ for y as integer = yMin() to yMax
+				'~ get #fileNum, , tile(x, y)
+			'~ next 
+		'~ next
+		'~ close #fileNum
+	'~ else
+		'~ panic("tile_map.loadFromDisk()")
+	'~ end if
+	'~ return 0
+'~ end function
+
+function tile_map.saveToDisk(fileNum as integer) as long
+	'write map dimensions
+	put #fileNum, , xMin()
+	put #fileNum, , xMax()
+	put #fileNum, , yMin()
+	put #fileNum, , yMax()
+	'write tile data
+	for x as integer = xMin() to xMax
+		for y as integer = yMin() to yMax
+			put #fileNum, , tile(x, y)
+		next 
+	next
+	return 0
+end function
+
+function tile_map.loadFromDisk(fileNum as integer) as long
+	reset_() 'erase current map in memory
+	'read map dimensions
+	dim as long lbx, ubx, lby, uby 'lower/upper boundary x/y
+	get #fileNum, , lbx
+	get #fileNum, , ubx
+	get #fileNum, , lby
+	get #fileNum, , uby
+	redim tile (lbx to ubx, lby to uby)
+	'read tile data
+	for x as integer = xMin() to xMax
+		for y as integer = yMin() to yMax
+			get #fileNum, , tile(x, y)
+		next 
+	next
+	return 0
 end function
 
 '--- test ----------------------------------------------------------------------
